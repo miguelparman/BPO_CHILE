@@ -1,0 +1,15 @@
+-- Actualiza Tipo de de interacción
+
+  UPDATE [CL_TRAFICO].[dbo].[TBL_CHAT]
+	SET INTERACTION_TYPE =	CASE WHEN COLA LIKE '%OUT%' THEN 'OUTBOUND_WSP'
+							ELSE 'INBOUND_WSP' END
+	WHERE FECHA >= '2024-12-01'
+
+
+-- Actualiza Tipo de de interacción
+
+  UPDATE [CL_TRAFICO].[dbo].[TBL_CHAT]
+	SET [SEGMENTO COLA] =	CASE WHEN COLA LIKE '%Micro%' THEN 'MICRO'
+								 WHEN COLA LIKE '%Pyme%' THEN 'PYME'
+							 ELSE SEGMENTO_AGRUPADO END
+	WHERE FECHA >= '2024-12-01'

@@ -9,7 +9,7 @@ from openpyxl.utils.cell import range_boundaries
 # ===========================================
 # Archivos
 # ===========================================
-archivo_origen = r"D:\IRISCENE ENGINEERING CORPORATION SLU\Repositorio Bi - Reporting_BPO\BPO_Chile\9. Dimensionamiento_y_Programación\202609\05. Dimensionado y Programación - Llamadas Usuarios Chile del 21 al 27 de setiembre 2026 - PPP_v2.xlsx"
+archivo_origen = r"D:\IRISCENE ENGINEERING CORPORATION SLU\Repositorio Bi - Reporting_BPO\BPO_Chile\9. Dimensionamiento_y_Programación\202610\05. Dimensionado y Programación - Llamadas Usuarios Chile del 28 de setiembre al 07 de octubre del 2026 - PPP.xlsx"
 
 archivo_destino = r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\DIMENSIONADO\Dimensionado y Programación.xlsx"
 
