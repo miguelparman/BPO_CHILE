@@ -6,6 +6,22 @@ from openpyxl.formula.translate import Translator
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import range_boundaries
 
+
+def _mostrar_proyecto():
+    """Muestra el nombre del proyecto en la consola y en el titulo de la ventana."""
+    import ctypes
+    import sys
+    from pathlib import Path
+
+    carpeta = Path(__file__).resolve().parent
+    nombre = carpeta.name
+    print("=" * 60, f" PROYECTO: {nombre}", "=" * 60, sep="\n", flush=True)
+    if sys.platform == "win32":
+        ctypes.windll.kernel32.SetConsoleTitleW(nombre)
+
+
+_mostrar_proyecto()
+
 # ===========================================
 # Archivos
 # ===========================================

@@ -70,7 +70,21 @@ def main() -> None:
     log.info("Proceso finalizado OK")
 
 
+def _mostrar_proyecto():
+    """Muestra el nombre del proyecto en la consola y en el titulo de la ventana."""
+    import ctypes
+    import sys
+    from pathlib import Path
+
+    carpeta = Path(__file__).resolve().parent
+    nombre = carpeta.name
+    print("=" * 60, f" PROYECTO: {nombre}", "=" * 60, sep="\n", flush=True)
+    if sys.platform == "win32":
+        ctypes.windll.kernel32.SetConsoleTitleW(nombre)
+
+
 if __name__ == "__main__":
+    _mostrar_proyecto()
     try:
         main()
     except Exception as e:
