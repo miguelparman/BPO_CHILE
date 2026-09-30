@@ -1,4 +1,4 @@
-/// Bandeja de correo con su asesor (1:1) y coordinador (gold.DIM_BANDEJA).
+/// Bandeja de correo con su ID Place, asesor (1:1) y coordinador (gold.DIM_BANDEJA).
 table DIM_BANDEJA
 	lineageTag: 9232111c-fe3e-4e74-8ae5-7d5d45b9872e
 
@@ -48,6 +48,13 @@ table DIM_BANDEJA
 		summarizeBy: none
 		sourceColumn: ULTIMA_REVISION_SALIDA_UTC
 
+	column ID_PLACE
+		dataType: int64
+		formatString: 0
+		lineageTag: f3b7effa-039c-4439-b091-a3656739f337
+		summarizeBy: none
+		sourceColumn: ID_PLACE
+
 	partition DIM_BANDEJA = m
 		mode: import
 		source =
@@ -56,4 +63,8 @@ table DIM_BANDEJA
 				    Tabla = Origen{[Schema = "gold", Item = "DIM_BANDEJA"]}[Data]
 				in
 				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
 

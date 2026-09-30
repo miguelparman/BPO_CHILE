@@ -4,10 +4,10 @@
   "position": {
     "x": 32,
     "y": 128,
-    "z": 2000,
+    "z": 1000,
     "height": 96,
     "width": 620,
-    "tabOrder": 2000
+    "tabOrder": 1000
   },
   "visual": {
     "visualType": "slicer",
@@ -72,23 +72,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "ba9a9769799b7323295d",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_FECHA"
-              }
-            },
-            "Property": "FECHA"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
   }
 }

@@ -23,7 +23,9 @@ BEGIN
         Asesor                            NVARCHAR(200)  NULL,
         ORIGEN                            NVARCHAR(400)  NULL,
         ASUNTO_AGRUPADO                   NVARCHAR(50)   NULL,  -- REBOTE / PRESENTACIÓN / PRUEBA / PROMO; NULL si ninguna regla calza (ver silver/mappings.REGLAS_ASUNTO_AGRUPADO)
-        COORDINADOR                       NVARCHAR(400)  NULL   -- ORIGEN sin 'Registro_' ni extension, '_' -> ' ' (ver silver/cargar.coordinador_desde_origen)
+        COORDINADOR                       NVARCHAR(400)  NULL,  -- ORIGEN sin 'Registro_' ni extension, '_' -> ' ' (ver silver/cargar.coordinador_desde_origen)
+        ID_PLACE                          INT            NULL,  -- 'SM<n>@movistar.cl' -> 51030000 + n (ver silver/cargar.id_place_desde_bandeja)
+        JEFATURA                          NVARCHAR(50)   NULL   -- [BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO] por ID_PLACE + mes UTC (ver silver/cargar.agregar_jefatura)
     );
 
     CREATE INDEX IX_TBL_CORREO_REGISTRO_SILVER_FechaHoraUTC ON dbo.TBL_CORREO_REGISTRO_SILVER (FechaHora_UTC_Texto);
@@ -53,7 +55,7 @@ IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'COORDINADOR') IS NULL
     ALTER TABLE dbo.TBL_CORREO_REGISTRO_SILVER ADD COORDINADOR NVARCHAR(400) NULL;
 GO
 
--- Estado actual de cada bandeja (TBL_CORREO_BANDEJAS de bronze) + COORDINADOR.
+-- Estado actual de cada bandeja (TBL_CORREO_BANDEJAS de bronze) + COORDINADOR + ID_PLACE.
 -- Se reemplaza completa en cada corrida, igual que en bronze. Es el origen
 -- de gold.DIM_BANDEJA.
 IF OBJECT_ID('dbo.TBL_CORREO_BANDEJAS_SILVER', 'U') IS NULL
@@ -63,6 +65,29 @@ IF OBJECT_ID('dbo.TBL_CORREO_BANDEJAS_SILVER', 'U') IS NULL
         UltimaRevisionEntrada     DATETIME2(7)   NULL,
         UltimaRevisionSalida      DATETIME2(7)   NULL,
         ORIGEN                    NVARCHAR(400)  NULL,
-        COORDINADOR               NVARCHAR(400)  NULL
+        COORDINADOR               NVARCHAR(400)  NULL,
+        ID_PLACE                  INT            NULL   -- igual que en TBL_CORREO_REGISTRO_SILVER, desde Correo_Bandeja
     );
+GO
+
+-- Migracion: ID_PLACE (derivado de la bandeja) en las dos tablas silver.
+-- Primero se llamo [ID PLACE] (con espacio): si existe se renombra, si no
+-- se agrega. Una columna agregada queda NULL hasta la siguiente carga de
+-- silver (main.py --desde silver --completo la llena para todo).
+IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'ID PLACE') IS NOT NULL
+   AND COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'ID_PLACE') IS NULL
+    EXEC sp_rename 'dbo.TBL_CORREO_REGISTRO_SILVER.[ID PLACE]', 'ID_PLACE', 'COLUMN';
+IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'ID_PLACE') IS NULL
+    ALTER TABLE dbo.TBL_CORREO_REGISTRO_SILVER ADD ID_PLACE INT NULL;
+IF COL_LENGTH('dbo.TBL_CORREO_BANDEJAS_SILVER', 'ID PLACE') IS NOT NULL
+   AND COL_LENGTH('dbo.TBL_CORREO_BANDEJAS_SILVER', 'ID_PLACE') IS NULL
+    EXEC sp_rename 'dbo.TBL_CORREO_BANDEJAS_SILVER.[ID PLACE]', 'ID_PLACE', 'COLUMN';
+IF COL_LENGTH('dbo.TBL_CORREO_BANDEJAS_SILVER', 'ID_PLACE') IS NULL
+    ALTER TABLE dbo.TBL_CORREO_BANDEJAS_SILVER ADD ID_PLACE INT NULL;
+GO
+
+-- Migracion: JEFATURA (cruce con la base de personal). Mismo ancho que
+-- [Jefatura] en el origen. Queda NULL hasta la siguiente carga de silver.
+IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'JEFATURA') IS NULL
+    ALTER TABLE dbo.TBL_CORREO_REGISTRO_SILVER ADD JEFATURA NVARCHAR(50) NULL;
 GO

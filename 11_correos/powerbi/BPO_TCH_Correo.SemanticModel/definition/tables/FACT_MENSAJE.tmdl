@@ -185,6 +185,14 @@ table FACT_MENSAJE
 		summarizeBy: none
 		sourceColumn: FECHA_CARGA
 
+	column JEFATURA_KEY
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 45c388d6-8283-465c-8149-2cb9e18fd1cb
+		summarizeBy: none
+		sourceColumn: JEFATURA_KEY
+
 	partition FACT_MENSAJE = m
 		mode: import
 		source =
@@ -192,10 +200,14 @@ table FACT_MENSAJE
 				    Origen = Sql.Database(Servidor, BaseDatos),
 				    Tabla = Origen{[Schema = "gold", Item = "FACT_MENSAJE"]}[Data],
 				    Columnas = Table.SelectColumns(Tabla, {
-				        "MENSAJE_KEY", "FECHA_KEY", "HORA_LOCAL", "BANDEJA_KEY", "TIPO_KEY", "ASUNTO_AGRUPADO_KEY",
+				        "MENSAJE_KEY", "FECHA_KEY", "HORA_LOCAL", "BANDEJA_KEY", "TIPO_KEY", "ASUNTO_AGRUPADO_KEY", "JEFATURA_KEY",
 				        "ID_MENSAJE", "CONVERSATION_ID", "ASUNTO", "CONTACTO", "FECHA_HORA_UTC", "FECHA_HORA_LOCAL", "CANTIDAD",
 				        "TABLA_ORIGEN", "PROCESO_CARGA", "ID_EJECUCION", "FECHA_CARGA"
 				    })
 				in
 				    Columnas
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
 

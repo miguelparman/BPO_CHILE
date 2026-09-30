@@ -365,23 +365,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "348720c4d4d0ac6c0578",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Última carga"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }

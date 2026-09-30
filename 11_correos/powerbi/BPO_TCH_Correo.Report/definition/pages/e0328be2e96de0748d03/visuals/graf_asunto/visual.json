@@ -2,11 +2,11 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "graf_asunto",
   "position": {
-    "x": 1184,
-    "y": 386,
+    "x": 1303.28071379547,
+    "y": 490.21276595744678,
     "z": 11000,
-    "height": 320,
-    "width": 704,
+    "height": 320.21962937542895,
+    "width": 585.0926561427591,
     "tabOrder": 11000
   },
   "visual": {
@@ -130,37 +130,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "aefc8e8048b2ea806ec6",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_ASUNTO_AGRUPADO"
-              }
-            },
-            "Property": "ASUNTO_AGRUPADO"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "d2abaaacc625b041a80c",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Mensajes"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }

@@ -25,3 +25,7 @@ table DIM_ASUNTO_AGRUPADO
 				in
 				    Tabla
 
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

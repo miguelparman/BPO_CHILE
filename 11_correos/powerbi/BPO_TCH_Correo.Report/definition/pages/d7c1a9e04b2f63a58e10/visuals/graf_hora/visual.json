@@ -4,10 +4,10 @@
   "position": {
     "x": 32,
     "y": 240,
-    "z": 5000,
+    "z": 4000,
     "height": 300,
     "width": 1856,
-    "tabOrder": 5000
+    "tabOrder": 4000
   },
   "visual": {
     "visualType": "clusteredColumnChart",
@@ -125,7 +125,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "d28cb6bca300d2ee1d37",
+        "name": "41a6dd3bbb9c1360dc63",
         "field": {
           "Column": {
             "Expression": {
@@ -139,21 +139,7 @@
         "type": "Advanced"
       },
       {
-        "name": "e8521984164a1036e212",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Mensajes"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "772c81eaa021a0dd9896",
+        "name": "41c21590ab5e7005b37e",
         "field": {
           "Column": {
             "Expression": {
@@ -165,6 +151,20 @@
           }
         },
         "type": "Categorical"
+      },
+      {
+        "name": "ce4b4b7a8be0b0b43e08",
+        "field": {
+          "Measure": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "FACT_MENSAJE"
+              }
+            },
+            "Property": "Mensajes"
+          }
+        },
+        "type": "Advanced"
       }
     ]
   }

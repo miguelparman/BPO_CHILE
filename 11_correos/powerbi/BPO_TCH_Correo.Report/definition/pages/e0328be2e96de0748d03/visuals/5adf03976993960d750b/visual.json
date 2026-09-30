@@ -4,10 +4,10 @@
   "position": {
     "x": 1497.911832946636,
     "y": 128.07424593967519,
-    "z": 14002,
+    "z": 16000,
     "height": 96.51972157772623,
     "width": 389.7911832946636,
-    "tabOrder": 14002
+    "tabOrder": 16000
   },
   "visual": {
     "visualType": "slicer",
@@ -90,23 +90,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "6e90cc526eae1aa20702",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_ASUNTO_AGRUPADO"
-              }
-            },
-            "Property": "ASUNTO_AGRUPADO"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
   }
 }

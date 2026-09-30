@@ -90,23 +90,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "0657ccf20ad70d120381",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_BANDEJA"
-              }
-            },
-            "Property": "ASESOR"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
   }
 }

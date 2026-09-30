@@ -2,11 +2,11 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "graf_mensajes_dia",
   "position": {
-    "x": 32,
-    "y": 386,
+    "x": 31.626630061770761,
+    "y": 490.21276595744678,
     "z": 10000,
-    "height": 320,
-    "width": 1136,
+    "height": 320.21962937542895,
+    "width": 699.73919011667806,
     "tabOrder": 10000
   },
   "visual": {
@@ -181,65 +181,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "8c2f3b3e004e0b663c3c",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Mensajes"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "66eb57e6e9c33b94bd38",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_TIPO"
-              }
-            },
-            "Property": "TIPO"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "28373c90503383b152eb",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_FECHA"
-              }
-            },
-            "Property": "ANIO_MES"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "d77459704d304452d52c",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_FECHA"
-              }
-            },
-            "Property": "DIA"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }

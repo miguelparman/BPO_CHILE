@@ -2,12 +2,12 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "seg_coordinador",
   "position": {
-    "x": 668,
-    "y": 128,
-    "z": 3000,
-    "height": 96,
-    "width": 480,
-    "tabOrder": 3000
+    "x": 662.370820668693,
+    "y": 128.38905775075989,
+    "z": 2000,
+    "height": 96.2917933130699,
+    "width": 372.03647416413372,
+    "tabOrder": 2000
   },
   "visual": {
     "visualType": "slicer",
@@ -90,23 +90,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "d6de760e586dcdeab15a",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_BANDEJA"
-              }
-            },
-            "Property": "COORDINADOR"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
   }
 }

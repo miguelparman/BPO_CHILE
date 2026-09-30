@@ -25,3 +25,7 @@ table DIM_TIPO
 				in
 				    Tabla
 
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

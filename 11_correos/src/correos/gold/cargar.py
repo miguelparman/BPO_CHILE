@@ -29,6 +29,7 @@ from gold.mappings import (
     TABLA_DIM_ASUNTO_AGRUPADO,
     TABLA_DIM_BANDEJA,
     TABLA_DIM_FECHA,
+    TABLA_DIM_JEFATURA,
     TABLA_DIM_TIPO,
     TABLA_FACT_MENSAJE,
 )
@@ -59,9 +60,12 @@ def actualizar_dimensiones(gateway, periodo: tuple[datetime, datetime] | None) -
     nuevas = gateway.execute_script_rowcount(sql.COMPLETAR_DIM_TIPO)
     logger.info("%s: %s tipo(s) nuevos.", TABLA_DIM_TIPO, nuevas)
 
-    grupos = [grupo for grupo, _, _ in REGLAS_ASUNTO_AGRUPADO]
+    grupos = [regla.grupo for regla in REGLAS_ASUNTO_AGRUPADO]
     nuevas = gateway.execute_script_rowcount(sql.completar_dim_asunto(len(grupos)), grupos)
     logger.info("%s: %s grupo(s) nuevos.", TABLA_DIM_ASUNTO_AGRUPADO, nuevas)
+
+    nuevas = gateway.execute_script_rowcount(sql.COMPLETAR_DIM_JEFATURA)
+    logger.info("%s: %s jefatura(s) nuevas.", TABLA_DIM_JEFATURA, nuevas)
 
     afectadas = gateway.execute_script_rowcount(sql.MERGE_DIM_BANDEJA)
     logger.info("%s: %s bandeja(s) insertadas/actualizadas.", TABLA_DIM_BANDEJA, afectadas)
@@ -107,12 +111,17 @@ def validar(gateway, periodo: tuple[datetime, datetime] | None) -> bool:
     """Chequeo posterior a la carga: la tabla de hechos debe tener las mismas
     filas que silver (en el periodo, o en total si 'periodo' es None),
     ninguna sin bandeja/tipo (clave 0) y ninguna sin sus columnas de
-    auditoria. Registra el resultado; devuelve True si todo cuadra."""
-    params = tuple(periodo) * 4 if periodo is not None else None
+    auditoria. Las filas sin jefatura (clave 0) solo se advierten: un asesor
+    puede no tener fila en la base de personal para ese mes. Registra el
+    resultado; devuelve True si todo cuadra."""
+    params = tuple(periodo) * 5 if periodo is not None else None
     fila = gateway.fetch_dataframe(sql.validar(con_periodo=periodo is not None), params).iloc[0]
     silver, fact = int(fila["FILAS_SILVER"]), int(fila["FILAS_FACT"])
     sin_clave, sin_auditoria = int(fila["FILAS_SIN_BANDEJA_O_TIPO"]), int(fila["FILAS_SIN_AUDITORIA"])
     ok = silver == fact and sin_clave == 0 and sin_auditoria == 0
+    sin_jefatura = int(fila["FILAS_SIN_JEFATURA"])
+    if sin_jefatura:
+        logger.warning("Validacion gold: %s fila(s) de %s sin jefatura (JEFATURA_KEY = 0).", sin_jefatura, TABLA_FACT_MENSAJE)
     registrar = logger.info if ok else logger.error
     registrar(
         "Validacion gold: silver=%s / fact=%s fila(s); %s sin bandeja o tipo; %s sin auditoria -> %s.",

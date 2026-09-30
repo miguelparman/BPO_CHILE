@@ -4,10 +4,10 @@
   "position": {
     "x": 1529.4663573085847,
     "y": 14.849187935034804,
-    "z": 6001,
+    "z": 6000,
     "height": 98.375870069605583,
     "width": 358.23665893271465,
-    "tabOrder": 6001
+    "tabOrder": 6000
   },
   "visual": {
     "visualType": "card",
@@ -365,23 +365,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "2994795233e71b5bd895",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Última carga"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }

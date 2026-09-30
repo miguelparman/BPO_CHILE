@@ -1,0 +1,31 @@
+/// Jefatura del asesor en el mes del mensaje (Triadas, Carterizados, ...), desde BBDD_GENERAL.dbo.TBL_PERSONAL_CONSOLIDADO; vacio = sin jefatura (gold.DIM_JEFATURA).
+table DIM_JEFATURA
+	lineageTag: 3a1f10a3-1158-4e0d-8878-9c463bb7f800
+
+	column JEFATURA_KEY
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 44299d49-587a-49c8-acec-00976b5f2d80
+		summarizeBy: none
+		sourceColumn: JEFATURA_KEY
+
+	column JEFATURA
+		dataType: string
+		lineageTag: 789dee30-d100-4ccb-b00f-9fae65e935be
+		summarizeBy: none
+		sourceColumn: JEFATURA
+
+	partition DIM_JEFATURA = m
+		mode: import
+		source =
+				let
+				    Origen = Sql.Database(Servidor, BaseDatos),
+				    Tabla = Origen{[Schema = "gold", Item = "DIM_JEFATURA"]}[Data]
+				in
+				    Tabla
+
+	annotation PBI_NavigationStepName = Navegación
+
+	annotation PBI_ResultType = Table
+

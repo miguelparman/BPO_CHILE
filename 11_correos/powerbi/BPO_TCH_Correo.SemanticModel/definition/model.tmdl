@@ -11,13 +11,14 @@ annotation __PBI_TimeIntelligenceEnabled = 1
 
 annotation PBI_ProTooling = ["DevMode"]
 
-annotation PBI_QueryOrder = ["Servidor","BaseDatos","FACT_MENSAJE","DIM_FECHA","DIM_BANDEJA","DIM_TIPO","DIM_ASUNTO_AGRUPADO"]
+annotation PBI_QueryOrder = ["Servidor","BaseDatos","FACT_MENSAJE","DIM_FECHA","DIM_BANDEJA","DIM_TIPO","DIM_ASUNTO_AGRUPADO","DIM_JEFATURA"]
 
 ref table FACT_MENSAJE
 ref table DIM_FECHA
 ref table DIM_BANDEJA
 ref table DIM_TIPO
 ref table DIM_ASUNTO_AGRUPADO
+ref table DIM_JEFATURA
 
 ref cultureInfo es-PE
 

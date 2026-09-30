@@ -19,6 +19,7 @@ from gold.mappings import (
     TABLA_DIM_ASUNTO_AGRUPADO,
     TABLA_DIM_BANDEJA,
     TABLA_DIM_FECHA,
+    TABLA_DIM_JEFATURA,
     TABLA_DIM_TIPO,
     TABLA_FACT_MENSAJE,
 )
@@ -53,6 +54,7 @@ def test_periodo_carga_dimensiones_antes_que_hechos():
         TABLA_DIM_FECHA,
         TABLA_DIM_TIPO,
         TABLA_DIM_ASUNTO_AGRUPADO,
+        TABLA_DIM_JEFATURA,
         TABLA_DIM_BANDEJA,
         TABLA_FACT_MENSAJE,  # DELETE del periodo
         TABLA_FACT_MENSAJE,  # INSERT del periodo
@@ -102,7 +104,7 @@ def test_dim_asunto_recibe_todos_los_grupos_de_las_reglas():
     cargar_periodo_gold(gateway, *_PERIODO, _EJECUCION)
 
     _, params = next((sql, p) for sql, p in gateway.deletes if _tabla_de(sql) == TABLA_DIM_ASUNTO_AGRUPADO)
-    assert params == tuple(grupo for grupo, _, _ in REGLAS_ASUNTO_AGRUPADO)
+    assert params == tuple(regla.grupo for regla in REGLAS_ASUNTO_AGRUPADO)
 
 
 def test_completo_trunca_solo_hechos_e_inserta_sin_filtro():
@@ -133,13 +135,14 @@ def test_gold_lee_solo_de_silver_nunca_de_bronze():
 
 def test_validar_ok_y_no_cuadra():
     gateway = FakeDatabaseGateway()
-    def _fila(silver, fact, sin_clave, sin_auditoria):
+    def _fila(silver, fact, sin_clave, sin_auditoria, sin_jefatura=0):
         return pd.DataFrame(
             {
                 "FILAS_SILVER": [silver],
                 "FILAS_FACT": [fact],
                 "FILAS_SIN_BANDEJA_O_TIPO": [sin_clave],
                 "FILAS_SIN_AUDITORIA": [sin_auditoria],
+                "FILAS_SIN_JEFATURA": [sin_jefatura],
             }
         )
 
@@ -148,11 +151,13 @@ def test_validar_ok_y_no_cuadra():
         _fila(10, 9, 0, 0),
         _fila(10, 10, 1, 0),
         _fila(10, 10, 0, 3),  # filas sin columnas de auditoria -> no cuadra
+        _fila(10, 10, 0, 0, 4),  # sin jefatura: solo advertencia, cuadra igual
     ]
 
     assert validar(gateway, _PERIODO) is True
     assert validar(gateway, _PERIODO) is False
     assert validar(gateway, None) is False
     assert validar(gateway, _PERIODO) is False
-    assert gateway.selects[0][1] == _PERIODO * 4
+    assert validar(gateway, _PERIODO) is True
+    assert gateway.selects[0][1] == _PERIODO * 5
     assert gateway.selects[2][1] == ()

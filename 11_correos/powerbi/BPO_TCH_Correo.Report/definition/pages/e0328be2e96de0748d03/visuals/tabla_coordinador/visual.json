@@ -2,8 +2,8 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "tabla_coordinador",
   "position": {
-    "x": 748.0278422273783,
-    "y": 722.04176334106739,
+    "x": 747.7533799290444,
+    "y": 826.10892826670909,
     "z": 13000,
     "height": 417.63341067285387,
     "width": 1139.6751740139212,
@@ -15,6 +15,21 @@
       "queryState": {
         "Rows": {
           "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DIM_JEFATURA"
+                    }
+                  },
+                  "Property": "JEFATURA"
+                }
+              },
+              "queryRef": "DIM_JEFATURA.JEFATURA",
+              "nativeQueryRef": "JEFATURA",
+              "active": true
+            },
             {
               "field": {
                 "Column": {
@@ -140,6 +155,29 @@
         ]
       }
     },
+    "expansionStates": [
+      {
+        "roles": [
+          "Rows"
+        ],
+        "levels": [
+          {
+            "queryRefs": [
+              "DIM_JEFATURA.JEFATURA"
+            ],
+            "isPinned": true
+          },
+          {
+            "queryRefs": [
+              "DIM_BANDEJA.COORDINADOR"
+            ],
+            "isCollapsed": true,
+            "isPinned": true
+          }
+        ],
+        "root": {}
+      }
+    ],
     "objects": {
       "columnWidth": [
         {
@@ -200,107 +238,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "3bca58111dc979d54543",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_BANDEJA"
-              }
-            },
-            "Property": "COORDINADOR"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "0b09082f3e8e509d3350",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Asesores activos"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "d258df636c460bb0240e",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Entradas reales"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "786b9db544333cba62c1",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Salidas"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "194927cfce8320122b9d",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Rebotes"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "e3a46ff84d4937ba9e6e",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "% Rebote"
-          }
-        },
-        "type": "Advanced"
-      },
-      {
-        "name": "f372d3ebc11adee089bd",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Mensajes por asesor (prom.)"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }

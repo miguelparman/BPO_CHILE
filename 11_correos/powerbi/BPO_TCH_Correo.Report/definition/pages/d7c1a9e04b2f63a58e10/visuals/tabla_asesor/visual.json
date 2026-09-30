@@ -4,10 +4,10 @@
   "position": {
     "x": 32,
     "y": 556,
-    "z": 6000,
+    "z": 5000,
     "height": 492,
     "width": 1856,
-    "tabOrder": 6000
+    "tabOrder": 5000
   },
   "visual": {
     "visualType": "tableEx",
@@ -15,6 +15,20 @@
       "queryState": {
         "Values": {
           "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DIM_JEFATURA"
+                    }
+                  },
+                  "Property": "JEFATURA"
+                }
+              },
+              "queryRef": "DIM_JEFATURA.JEFATURA",
+              "nativeQueryRef": "JEFATURA"
+            },
             {
               "field": {
                 "Column": {
@@ -156,10 +170,10 @@
               "Column": {
                 "Expression": {
                   "SourceRef": {
-                    "Entity": "DIM_BANDEJA"
+                    "Entity": "DIM_JEFATURA"
                   }
                 },
-                "Property": "ULTIMA_REVISION_ENTRADA_UTC"
+                "Property": "JEFATURA"
               }
             },
             "direction": "Ascending"

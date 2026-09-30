@@ -4,9 +4,10 @@
 --
 --   gold.FACT_MENSAJE          1 fila por mensaje (grano: ID_MENSAJE)
 --   gold.DIM_FECHA             calendario (fecha LOCAL Peru/Bogota)
---   gold.DIM_BANDEJA           bandeja + asesor + coordinador (1:1 bandeja-asesor)
+--   gold.DIM_BANDEJA           bandeja + ID Place + asesor + coordinador (1:1 bandeja-asesor)
 --   gold.DIM_TIPO              Entrada / Salida
 --   gold.DIM_ASUNTO_AGRUPADO   REBOTE / PRESENTACIÓN / PRUEBA / PROMO
+--   gold.DIM_JEFATURA          jefatura del asesor en el mes del mensaje (Triadas, Carterizados, ...)
 --
 -- Cada dimension (salvo DIM_FECHA) tiene un miembro de clave 0 con
 -- descripcion vacia: la fila de hechos cuyo valor en silver es NULL apunta
@@ -43,12 +44,19 @@ IF OBJECT_ID('gold.DIM_BANDEJA', 'U') IS NULL
     CREATE TABLE gold.DIM_BANDEJA (
         BANDEJA_KEY                  INT IDENTITY(1, 1) NOT NULL CONSTRAINT PK_DIM_BANDEJA PRIMARY KEY,
         BANDEJA                      NVARCHAR(255)  NOT NULL CONSTRAINT UQ_DIM_BANDEJA_BANDEJA UNIQUE,
+        ID_PLACE                     INT            NULL,  -- calculado en silver (ID_PLACE: 'SM<n>@movistar.cl' -> 51030000 + n)
         ASESOR                       NVARCHAR(200)  NULL,
         COORDINADOR                  NVARCHAR(400)  NULL,  -- calculado en silver (nombre del .xlsx sin 'Registro_' ni extension)
         ORIGEN                       NVARCHAR(400)  NULL,
         ULTIMA_REVISION_ENTRADA_UTC  DATETIME2(0)   NULL,  -- estado actual, desde dbo.TBL_CORREO_BANDEJAS_SILVER
         ULTIMA_REVISION_SALIDA_UTC   DATETIME2(0)   NULL
     );
+GO
+
+-- Migracion: ID_PLACE para una DIM_BANDEJA creada antes de que existiera.
+-- Se llena en la siguiente carga de gold (el MERGE actualiza todas las bandejas).
+IF COL_LENGTH('gold.DIM_BANDEJA', 'ID_PLACE') IS NULL
+    ALTER TABLE gold.DIM_BANDEJA ADD ID_PLACE INT NULL;
 GO
 
 IF OBJECT_ID('gold.DIM_TIPO', 'U') IS NULL
@@ -62,6 +70,13 @@ IF OBJECT_ID('gold.DIM_ASUNTO_AGRUPADO', 'U') IS NULL
     CREATE TABLE gold.DIM_ASUNTO_AGRUPADO (
         ASUNTO_AGRUPADO_KEY  INT IDENTITY(1, 1) NOT NULL CONSTRAINT PK_DIM_ASUNTO_AGRUPADO PRIMARY KEY,
         ASUNTO_AGRUPADO      NVARCHAR(50)   NOT NULL CONSTRAINT UQ_DIM_ASUNTO_AGRUPADO UNIQUE
+    );
+GO
+
+IF OBJECT_ID('gold.DIM_JEFATURA', 'U') IS NULL
+    CREATE TABLE gold.DIM_JEFATURA (
+        JEFATURA_KEY  INT IDENTITY(1, 1) NOT NULL CONSTRAINT PK_DIM_JEFATURA PRIMARY KEY,
+        JEFATURA      NVARCHAR(50)   NOT NULL CONSTRAINT UQ_DIM_JEFATURA UNIQUE
     );
 GO
 
@@ -87,6 +102,13 @@ BEGIN
     SET IDENTITY_INSERT gold.DIM_ASUNTO_AGRUPADO OFF;
 END
 GO
+IF NOT EXISTS (SELECT 1 FROM gold.DIM_JEFATURA WHERE JEFATURA_KEY = 0)
+BEGIN
+    SET IDENTITY_INSERT gold.DIM_JEFATURA ON;
+    INSERT INTO gold.DIM_JEFATURA (JEFATURA_KEY, JEFATURA) VALUES (0, N'');
+    SET IDENTITY_INSERT gold.DIM_JEFATURA OFF;
+END
+GO
 
 IF OBJECT_ID('gold.FACT_MENSAJE', 'U') IS NULL
 BEGIN
@@ -97,6 +119,8 @@ BEGIN
         BANDEJA_KEY          INT            NOT NULL CONSTRAINT FK_FACT_MENSAJE_BANDEJA REFERENCES gold.DIM_BANDEJA (BANDEJA_KEY),
         TIPO_KEY             INT            NOT NULL CONSTRAINT FK_FACT_MENSAJE_TIPO REFERENCES gold.DIM_TIPO (TIPO_KEY),
         ASUNTO_AGRUPADO_KEY  INT            NOT NULL CONSTRAINT FK_FACT_MENSAJE_ASUNTO REFERENCES gold.DIM_ASUNTO_AGRUPADO (ASUNTO_AGRUPADO_KEY),
+        JEFATURA_KEY         INT            NOT NULL CONSTRAINT DF_FACT_MENSAJE_JEFATURA DEFAULT (0)
+                                            CONSTRAINT FK_FACT_MENSAJE_JEFATURA REFERENCES gold.DIM_JEFATURA (JEFATURA_KEY),
         ID_MENSAJE           NVARCHAR(200)  NULL,
         CONVERSATION_ID      NVARCHAR(200)  NULL,
         ASUNTO               NVARCHAR(MAX)  NULL,
@@ -114,6 +138,7 @@ BEGIN
     CREATE INDEX IX_FACT_MENSAJE_FECHA_HORA_UTC ON gold.FACT_MENSAJE (FECHA_HORA_UTC);
     CREATE INDEX IX_FACT_MENSAJE_FECHA_KEY ON gold.FACT_MENSAJE (FECHA_KEY);
     CREATE INDEX IX_FACT_MENSAJE_BANDEJA_KEY ON gold.FACT_MENSAJE (BANDEJA_KEY);
+    CREATE INDEX IX_FACT_MENSAJE_JEFATURA_KEY ON gold.FACT_MENSAJE (JEFATURA_KEY);
 END
 GO
 
@@ -128,4 +153,18 @@ IF COL_LENGTH('gold.FACT_MENSAJE', 'ID_EJECUCION') IS NULL
     ALTER TABLE gold.FACT_MENSAJE ADD ID_EJECUCION BIGINT NULL;
 IF COL_LENGTH('gold.FACT_MENSAJE', 'FECHA_CARGA') IS NULL
     ALTER TABLE gold.FACT_MENSAJE ADD FECHA_CARGA DATETIME2(0) NULL;
+GO
+
+-- Migracion: JEFATURA_KEY para una FACT_MENSAJE creada antes de que existiera.
+-- Las filas ya cargadas quedan en 0 (miembro vacio) hasta que se recargue su
+-- periodo (main.py --desde silver --completo las llena todas).
+IF COL_LENGTH('gold.FACT_MENSAJE', 'JEFATURA_KEY') IS NULL
+    ALTER TABLE gold.FACT_MENSAJE ADD JEFATURA_KEY INT NOT NULL
+        CONSTRAINT DF_FACT_MENSAJE_JEFATURA DEFAULT (0) WITH VALUES;
+GO
+IF OBJECT_ID('gold.FK_FACT_MENSAJE_JEFATURA', 'F') IS NULL
+    ALTER TABLE gold.FACT_MENSAJE ADD CONSTRAINT FK_FACT_MENSAJE_JEFATURA
+        FOREIGN KEY (JEFATURA_KEY) REFERENCES gold.DIM_JEFATURA (JEFATURA_KEY);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FACT_MENSAJE_JEFATURA_KEY' AND object_id = OBJECT_ID('gold.FACT_MENSAJE'))
+    CREATE INDEX IX_FACT_MENSAJE_JEFATURA_KEY ON gold.FACT_MENSAJE (JEFATURA_KEY);
 GO

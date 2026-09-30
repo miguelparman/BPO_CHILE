@@ -2,8 +2,8 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "graf_coordinador",
   "position": {
-    "x": 31.55452436194896,
-    "y": 722.04176334106739,
+    "x": 31.280062063615205,
+    "y": 826.10892826670909,
     "z": 12000,
     "height": 417.63341067285387,
     "width": 699.76798143851511,
@@ -108,37 +108,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "706aac78ed9c2e03c066",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_BANDEJA"
-              }
-            },
-            "Property": "COORDINADOR"
-          }
-        },
-        "type": "Categorical"
-      },
-      {
-        "name": "cebe714fc62aac33545b",
-        "field": {
-          "Measure": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "FACT_MENSAJE"
-              }
-            },
-            "Property": "Salidas"
-          }
-        },
-        "type": "Advanced"
-      }
-    ]
   }
 }

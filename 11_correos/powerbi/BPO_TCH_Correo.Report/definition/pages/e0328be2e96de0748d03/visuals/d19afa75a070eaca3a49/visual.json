@@ -2,12 +2,12 @@
   "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
   "name": "d19afa75a070eaca3a49",
   "position": {
-    "x": 31.55452436194896,
-    "y": 1174.9419953596289,
-    "z": 14001,
-    "height": 402.78422273781905,
-    "width": 1856.1484918793506,
-    "tabOrder": 14001
+    "x": 31.152860802732707,
+    "y": 1278.9069171648164,
+    "z": 15000,
+    "height": 485.32877882152007,
+    "width": 1856.0546541417593,
+    "tabOrder": 15000
   },
   "visual": {
     "visualType": "tableEx",
@@ -15,6 +15,20 @@
       "queryState": {
         "Values": {
           "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DIM_JEFATURA"
+                    }
+                  },
+                  "Property": "JEFATURA"
+                }
+              },
+              "queryRef": "DIM_JEFATURA.JEFATURA",
+              "nativeQueryRef": "JEFATURA"
+            },
             {
               "field": {
                 "Column": {
@@ -195,7 +209,7 @@
   "filterConfig": {
     "filters": [
       {
-        "name": "3f43b720adbecc41a647",
+        "name": "e75f4a65e7d28ebd3040",
         "field": {
           "Column": {
             "Expression": {
@@ -209,7 +223,7 @@
         "type": "Categorical"
       },
       {
-        "name": "a5d5c300991db2c13044",
+        "name": "6d1e7363195a919531bc",
         "field": {
           "Column": {
             "Expression": {
@@ -223,7 +237,7 @@
         "type": "Categorical"
       },
       {
-        "name": "2ca603e6e0ab4919763c",
+        "name": "6498d47816c794061296",
         "field": {
           "Column": {
             "Expression": {
@@ -237,7 +251,7 @@
         "type": "Categorical"
       },
       {
-        "name": "c32f1cbfc979a0427935",
+        "name": "e450ca69c14d33b337bb",
         "field": {
           "Column": {
             "Expression": {
@@ -251,7 +265,7 @@
         "type": "Categorical"
       },
       {
-        "name": "6b3d2cd580a6430c5022",
+        "name": "db250071c100ea0ad175",
         "field": {
           "Column": {
             "Expression": {
@@ -265,7 +279,7 @@
         "type": "Categorical"
       },
       {
-        "name": "8e1e5a49d8c4779116ea",
+        "name": "b5f48d919c4097886ce1",
         "field": {
           "Column": {
             "Expression": {
@@ -279,7 +293,7 @@
         "type": "Categorical"
       },
       {
-        "name": "cf1e5f7f7b76b5408833",
+        "name": "533e4fe946201e679a3c",
         "field": {
           "Column": {
             "Expression": {
@@ -293,7 +307,7 @@
         "type": "Categorical"
       },
       {
-        "name": "dc3155e1b2d80e483b11",
+        "name": "7cf52604ec11a217990a",
         "field": {
           "Column": {
             "Expression": {
@@ -307,7 +321,7 @@
         "type": "Categorical"
       },
       {
-        "name": "630adf073c1a23600230",
+        "name": "b19e2ca26ec00eed441b",
         "field": {
           "Column": {
             "Expression": {
@@ -316,6 +330,20 @@
               }
             },
             "Property": "COORDINADOR"
+          }
+        },
+        "type": "Categorical"
+      },
+      {
+        "name": "589e1f73151ae351626d",
+        "field": {
+          "Column": {
+            "Expression": {
+              "SourceRef": {
+                "Entity": "DIM_JEFATURA"
+              }
+            },
+            "Property": "JEFATURA"
           }
         },
         "type": "Categorical"

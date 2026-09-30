@@ -60,6 +60,11 @@
             }
           }
         }
+      ],
+      "general": [
+        {
+          "properties": {}
+        }
       ]
     },
     "visualContainerObjects": {
@@ -85,23 +90,5 @@
       ]
     },
     "drillFilterOtherVisuals": true
-  },
-  "filterConfig": {
-    "filters": [
-      {
-        "name": "a6a97ab022133dc607d1",
-        "field": {
-          "Column": {
-            "Expression": {
-              "SourceRef": {
-                "Entity": "DIM_BANDEJA"
-              }
-            },
-            "Property": "COORDINADOR"
-          }
-        },
-        "type": "Categorical"
-      }
-    ]
   }
 }

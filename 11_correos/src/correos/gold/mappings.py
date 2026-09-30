@@ -11,6 +11,7 @@ TABLA_DIM_FECHA = "DIM_FECHA"
 TABLA_DIM_BANDEJA = "DIM_BANDEJA"
 TABLA_DIM_TIPO = "DIM_TIPO"
 TABLA_DIM_ASUNTO_AGRUPADO = "DIM_ASUNTO_AGRUPADO"
+TABLA_DIM_JEFATURA = "DIM_JEFATURA"
 
 # Columnas de auditoria de FACT_MENSAJE (ver cargar.py): de que tabla silver
 # viene la fila, que codigo la inserto, en que corrida (enlaza con
