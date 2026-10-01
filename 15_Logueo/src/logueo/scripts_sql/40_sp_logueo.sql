@@ -1,0 +1,1 @@
+EXEC [CL_LOGUEO].[dbo].[SP_LOGUEO]

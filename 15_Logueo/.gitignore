@@ -1,0 +1,11 @@
+.env
+*.log
+logs/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.vscode/
+*.egg-info/
+# Fotos de datos reales (nombres de agentes) generadas por tools/equivalencia.py
+evidencias/
