@@ -2,16 +2,19 @@
 Configuración del pipeline, leída desde variables de entorno (.env).
 
 Reemplaza:
-- Los Connection Managers del .dtsx (OLEDB "162", EXCEL "ACTUAL_", FLATFILE "Reporte_termometro_v2")
+- Los Connection Managers del .dtsx (OLEDB "162", EXCEL "ACTUAL_", FLATFILE "Reporte_termometro_v2").
+  Los dos archivos se leen de SharePoint vía Microsoft Graph (carpeta
+  .../04 CAMPAÑAS/Termometro del site ReportingFractalia), no de disco.
 - Las variables User::Fecha_inicio, User::Fecha_fin, User::Periodo
 """
 import os
 from datetime import date
 from dataclasses import dataclass
+from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")  # .env en la raiz del proyecto, junto a main.py
 except ImportError:
     pass  # python-dotenv es opcional; si no está, se usan variables de entorno del sistema
 
@@ -28,18 +31,26 @@ class Settings:
     # --- Base de datos de cartera (usada en el JOIN final) ---
     db_cartera_database: str = os.getenv("DB_CARTERA_DATABASE", "CL_CARTERA")
 
-    # --- Rutas de archivos fuente (reemplaza Connection Manager "ACTUAL_" y "Reporte_termometro_v2") ---
-    excel_clientes_path: str = os.getenv(
-        "EXCEL_CLIENTES_PATH",
-        r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\Campanhas\Termometro\SOURCE\ACTUAL_.xlsx",
+    # --- Microsoft Graph: App Registration con acceso al site ReportingFractalia ---
+    tenant_id: str = os.getenv("TENANT_ID", "")
+    client_id: str = os.getenv("CLIENT_ID", "")
+    client_secret: str = os.getenv("CLIENT_SECRET", "")
+    graph_timeout_ms: int = int(os.getenv("GRAPH_TIMEOUT") or 120000)
+
+    # --- Origen de los archivos en SharePoint (reemplaza Connection Manager "ACTUAL_" y "Reporte_termometro_v2") ---
+    sharepoint_hostname: str = os.getenv("SHAREPOINT_HOSTNAME") or "fractaliagroup.sharepoint.com"
+    sharepoint_site_path: str = os.getenv("SHAREPOINT_SITE_PATH") or "/sites/ReportingFractalia"
+    sharepoint_drive_name: str = os.getenv("SHAREPOINT_DRIVE_NAME") or "Data Reporting"
+    sharepoint_folder_path: str = (
+        os.getenv("SHAREPOINT_FOLDER_PATH") or "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/04 CAMPAÑAS/Termometro"
     )
+    # Rutas relativas a SHAREPOINT_FOLDER_PATH
+    excel_clientes_archivo: str = os.getenv("EXCEL_CLIENTES_ARCHIVO") or "SOURCE/ACTUAL_.xlsx"
+    csv_salesforce_archivo: str = os.getenv("CSV_SALESFORCE_ARCHIVO") or "SF/Reporte_termometros.csv"
+
     excel_clientes_sheet: str = os.getenv("EXCEL_CLIENTES_SHEET", "DB")
     excel_detractores_sheet: str = os.getenv("EXCEL_DETRACTORES_SHEET", "DB_DETRACTOR")
 
-    csv_salesforce_path: str = os.getenv(
-        "CSV_SALESFORCE_PATH",
-        r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\Campanhas\Termometro\SF\Reporte_termometros_v2.csv",
-    )
     csv_salesforce_encoding: str = os.getenv("CSV_SALESFORCE_ENCODING", "latin-1")
     csv_salesforce_delimiter: str = os.getenv("CSV_SALESFORCE_DELIMITER", ",")
 

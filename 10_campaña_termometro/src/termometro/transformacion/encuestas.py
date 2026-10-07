@@ -102,7 +102,7 @@ def transform_encuestas(df: pd.DataFrame, periodo: int) -> pd.DataFrame:
 
     for col in TEXT_COLUMNS:
         if col in df.columns:
-            # dtype "string" (nullable), no astype(str) -- ver nota en transformers/clientes.py
+            # dtype "string" (nullable), no astype(str) -- ver nota en transformacion/clientes.py
             df[col] = df[col].astype("string").str.strip()
 
     for col in DATE_COLUMNS:

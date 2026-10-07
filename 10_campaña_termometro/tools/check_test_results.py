@@ -2,19 +2,19 @@
 Valida el resultado del pipeline contra los 8 casos de borde sintéticos
 generados por generate_sample_data.py. Se corre DESPUÉS de main.py.
 
-A diferencia del módulo parity/ (que compara contra una corrida real de
+A diferencia del módulo tools/parity/ (que compara contra una corrida real de
 SSIS), este script no necesita el paquete SSIS -- valida directamente que la
 lógica de negocio (Estado, NPS, deduplicación, filtro de rango de fechas,
 marca de detractor) se comporta como se espera, usando casos conocidos.
 
 Uso:
-    python scripts/check_test_results.py --periodo 202607
+    python tools/check_test_results.py --periodo 202607
 """
 import argparse
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src", "termometro"))
 
 import pandas as pd
 from sqlalchemy import text

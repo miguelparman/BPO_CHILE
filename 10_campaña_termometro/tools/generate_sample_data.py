@@ -14,7 +14,7 @@ con casos de borde a propósito para validar la lógica del pipeline:
   RUT 88888888-8 -> Q11/Q14 = "No evaluado" (texto no numérico)     -> Prom 11./Prom 14. = NULL
 
 Ejecutar:
-    python scripts/generate_sample_data.py
+    python tools/generate_sample_data.py
 """
 import os
 import sys

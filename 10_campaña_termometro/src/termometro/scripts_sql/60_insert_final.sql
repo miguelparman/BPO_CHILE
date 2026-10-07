@@ -114,7 +114,18 @@ FROM
                     ,[Peso]
                     ,[Plan de acción  Caso]
                     ,[ISC (Índice de Satisfacción del Cliente): Ref.]
-                    ,ROW_NUMBER() OVER(PARTITION BY [No  identificación fiscal] ORDER BY [No  identificación fiscal], [Peso], [Fecha de la encuesta] DESC) [Orden]
+                    -- Desempate agregado 2026-10-07 (no estaba en el .dtsx): con misma Fecha y Peso,
+                    -- 1) la encuesta con Plan de acción Caso, 2) la ISC más reciente (Ref. correlativa).
+                    -- Sin esto, SQL Server elegía una al azar en cada corrida.
+                    ,ROW_NUMBER() OVER(
+                        PARTITION BY [No  identificación fiscal]
+                        ORDER BY
+                            [No  identificación fiscal]
+                            ,[Peso]
+                            ,[Fecha de la encuesta] DESC
+                            ,CASE WHEN [Plan de acción  Caso] IS NOT NULL THEN 0 ELSE 1 END
+                            ,TRY_CAST(REPLACE([ISC (Índice de Satisfacción del Cliente): Ref.], 'ISC - ', '') AS INT) DESC
+                    ) [Orden]
                 FROM
                     [CL_CAMPAÑAS].[dbo].[TBL_CAMPAÑA_TERMOMETRO_SF_TEMP] WITH(NOLOCK)
                 WHERE

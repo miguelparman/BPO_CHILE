@@ -1,0 +1,11 @@
+.env
+*.log
+logs/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.vscode/
+*.egg-info/
+# Fotos de datos reales (RUT de clientes) generadas por tools/parity
+tools/parity/snapshots/

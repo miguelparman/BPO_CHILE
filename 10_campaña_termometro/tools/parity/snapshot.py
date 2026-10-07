@@ -9,33 +9,35 @@ Cada corrida sobrescribe la tabla, por eso hay que capturar el resultado en un
 archivo antes de correr la otra versión.
 
 Uso:
-    python -m parity.snapshot --periodo 202607 --etiqueta ssis
-    python -m parity.snapshot --periodo 202607 --etiqueta python
+    python -m tools.parity.snapshot --periodo 202607 --etiqueta ssis
+    python -m tools.parity.snapshot --periodo 202607 --etiqueta python
 """
 import argparse
 import logging
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(_ROOT, "src", "termometro"))
 
 import pandas as pd
 from sqlalchemy import text
 
+import sql
 from db import get_engine
 
 logger = logging.getLogger(__name__)
 
-SNAPSHOT_DIR = "parity/snapshots"
+SNAPSHOT_DIR = os.path.join(_ROOT, "tools", "parity", "snapshots")
 
 
 def snapshot(periodo: int, etiqueta: str) -> str:
     os.makedirs(SNAPSHOT_DIR, exist_ok=True)
-    with open("sql/select_periodo_final.sql", "r", encoding="utf-8") as f:
-        sql = f.read()
+    with open(sql.SELECT_PERIODO_FINAL, "r", encoding="utf-8") as f:
+        query = f.read()
 
     engine = get_engine()
-    df = pd.read_sql(text(sql), engine, params={"periodo": periodo})
+    df = pd.read_sql(text(query), engine, params={"periodo": periodo})
 
     out_path = os.path.join(SNAPSHOT_DIR, f"{periodo}_{etiqueta}.parquet")
     df.to_parquet(out_path, index=False)

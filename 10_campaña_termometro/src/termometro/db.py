@@ -3,6 +3,7 @@ Manejo de conexión y ejecución SQL contra SQL Server.
 """
 import logging
 from contextlib import contextmanager
+from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
@@ -34,7 +35,7 @@ def get_connection():
         conn.close()
 
 
-def run_sql_file(path: str, params: dict | None = None) -> None:
+def run_sql_file(path: str | Path, params: dict | None = None) -> None:
     """Ejecuta un archivo .sql con parámetros nombrados (:param), dentro de una transacción."""
     with open(path, "r", encoding="utf-8") as f:
         sql = f.read()

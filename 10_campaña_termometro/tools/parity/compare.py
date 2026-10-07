@@ -3,21 +3,22 @@ Compara dos snapshots de TBL_CAMPAÑA_TERMOMETRO (uno del SSIS original, otro
 del pipeline Python) y reporta diferencias.
 
 Uso:
-    python -m parity.compare --periodo 202607 --base ssis --nuevo python
+    python -m tools.parity.compare --periodo 202607 --base ssis --nuevo python
 
 Genera:
     - Reporte en consola (resumen)
-    - parity/snapshots/<periodo>_diff_report.md  (detalle)
+    - tools/parity/snapshots/<periodo>_diff_report.md  (detalle)
 """
 import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(_ROOT, "src", "termometro"))
 
 import pandas as pd
 
-SNAPSHOT_DIR = "parity/snapshots"
+SNAPSHOT_DIR = os.path.join(_ROOT, "tools", "parity", "snapshots")
 
 # Columna(s) que identifican una fila de forma única
 KEY_COLUMNS = ["RUT", "PERIODO"]
@@ -33,7 +34,7 @@ def _load(periodo: int, etiqueta: str) -> pd.DataFrame:
     path = os.path.join(SNAPSHOT_DIR, f"{periodo}_{etiqueta}.parquet")
     if not os.path.exists(path):
         raise FileNotFoundError(
-            f"No existe {path}. Corre primero: python -m parity.snapshot --periodo {periodo} --etiqueta {etiqueta}"
+            f"No existe {path}. Corre primero: python -m tools.parity.snapshot --periodo {periodo} --etiqueta {etiqueta}"
         )
     return pd.read_parquet(path)
 

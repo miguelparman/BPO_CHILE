@@ -17,6 +17,8 @@ fallando esa fila puntual. Vale la pena revisar con quien genera el reporte de
 Salesforce si pueden exportarlo en UTF-8 para evitar esta ambigüedad a futuro.
 """
 import logging
+from io import BytesIO
+
 import pandas as pd
 
 from config import settings
@@ -24,11 +26,11 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 
-def read_salesforce_csv(path: str | None = None) -> pd.DataFrame:
-    path = path or settings.csv_salesforce_path
-    logger.info("Leyendo CSV Salesforce: %s", path)
+def read_salesforce_csv(contenido: bytes, origen: str = "") -> pd.DataFrame:
+    """Parsea el CSV ya descargado (bytes)."""
+    logger.info("Leyendo CSV Salesforce: %s", origen)
     df = pd.read_csv(
-        path,
+        BytesIO(contenido),
         sep=settings.csv_salesforce_delimiter,
         encoding=settings.csv_salesforce_encoding,  # default ahora es latin-1, ver nota arriba
         quotechar='"',
