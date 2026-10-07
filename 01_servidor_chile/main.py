@@ -36,6 +36,8 @@ SHAREPOINT_FOLDER_PATH = os.environ["SHAREPOINT_FOLDER_PATH"]
 
 EXPORTS_DIR = Path(__file__).parent / "exports"
 
+PERIODOS_POR_DEFECTO = 2
+
 _TABLE_NAME_RE = re.compile(r"\[([^\]]+)\]")
 
 
@@ -44,17 +46,17 @@ def nombre_archivo(tabla: str) -> str:
     return f"{_TABLE_NAME_RE.findall(tabla)[-1]}.csv"
 
 
-def ultimos_dos_meses(cursor, tabla: str, campo_fecha: str, es_datetime: bool = False) -> list:
-    """Devuelve los codigos YYYYMM (o valores de campo_fecha) de los dos
-    ultimos meses con datos.
+def ultimos_periodos(cursor, tabla: str, campo_fecha: str, n: int, es_datetime: bool = False) -> list:
+    """Devuelve los codigos YYYYMM (o valores de campo_fecha) de los n
+    ultimos periodos con datos.
 
     Si es_datetime es True, campo_fecha es un datetime completo (con hora):
-    se agrupa por mes con FORMAT(..., 'yyyyMM') antes de tomar el TOP (2),
+    se agrupa por mes con FORMAT(..., 'yyyyMM') antes de tomar el TOP (n),
     porque los valores exactos casi nunca se repiten entre filas.
     """
     campo = f"FORMAT({campo_fecha}, 'yyyyMM')" if es_datetime else campo_fecha
     cursor.execute(
-        f"SELECT DISTINCT TOP (2) {campo} FROM {tabla} "
+        f"SELECT DISTINCT TOP ({n}) {campo} FROM {tabla} "
         f"WHERE {campo_fecha} IS NOT NULL ORDER BY {campo} DESC"
     )
     return [fila[0] for fila in cursor.fetchall()]
@@ -70,15 +72,15 @@ def formatear_duracion(segundos: float) -> str:
     return str(timedelta(seconds=round(segundos)))
 
 
-def exportar_tabla(cursor, tabla: str, campo_fecha: str, ruta_csv: Path, es_datetime: bool = False):
+def exportar_tabla(cursor, tabla: str, campo_fecha: str, ruta_csv: Path, n: int, es_datetime: bool = False):
     """Exporta la tabla a CSV y devuelve (filas_totales, meses).
 
     meses es None si fue una descarga completa (sin date_field), o la lista
-    de los meses filtrados; una lista vacia significa que el campo de fecha
+    de los n ultimos periodos filtrados; una lista vacia significa que el campo de fecha
     no tiene datos y no se genero archivo.
     """
     if campo_fecha:
-        meses = ultimos_dos_meses(cursor, tabla, campo_fecha, es_datetime)
+        meses = ultimos_periodos(cursor, tabla, campo_fecha, n, es_datetime)
         if not meses:
             return 0, []
         placeholders = ",".join("?" for _ in meses)
@@ -129,18 +131,21 @@ def main():
             tabla = tabla_cfg["table"]
             campo_fecha = tabla_cfg["date_field"]
             es_datetime = tabla_cfg.get("is_datetime", False)
+            n = tabla_cfg.get("periods", PERIODOS_POR_DEFECTO)
             ruta_csv = EXPORTS_DIR / nombre_archivo(tabla)
 
             print(f"[{datetime.now():%H:%M:%S}] INICIO  {tabla}")
             inicio = time.perf_counter()
             filas_totales = 0
             try:
-                filas_totales, meses = exportar_tabla(cursor, tabla, campo_fecha, ruta_csv, es_datetime)
+                if isinstance(n, bool) or not isinstance(n, int) or n < 1:
+                    raise ValueError(f"periods invalido: {n!r} (debe ser entero >= 1)")
+                filas_totales, meses = exportar_tabla(cursor, tabla, campo_fecha, ruta_csv, n, es_datetime)
                 if meses == []:
                     estado = "SIN DATOS"
                 else:
                     uploader.upload(ruta_csv)
-                    estado = "OK (tabla completa)" if meses is None else f"OK (meses {formatear_meses(meses)})"
+                    estado = "OK (tabla completa)" if meses is None else f"OK ({n} periodos: {formatear_meses(meses)})"
             except Exception as exc:
                 estado = f"ERROR: {exc}"
 

@@ -10,8 +10,8 @@ Extrae tablas de `[Externos_Frac]` desde el servidor SQL Server del dominio remo
 2. Se autentica contra Microsoft Graph con credenciales de aplicacion (client
    credentials) para obtener acceso al site de SharePoint.
 3. Para cada tabla listada en `tables_config.py`:
-   - Si tiene `date_field`, detecta los dos ultimos meses con datos y descarga
-     solo esas filas.
+   - Si tiene `date_field`, detecta los ultimos `periods` meses con datos
+     (2 por defecto) y descarga solo esas filas.
    - Si `date_field` esta vacio, descarga la tabla completa (ej. `base_saip`).
    - Escribe el resultado en `exports/<TABLA>.csv` (`;` como separador,
      `utf-8-sig`) y lo sube a la carpeta de SharePoint configurada.
@@ -27,8 +27,12 @@ Cada entrada define:
 - `is_datetime` (opcional, default `False`): marcar `True` cuando
   `date_field` es un `datetime` completo (con hora), no un codigo `YYYYMM`.
   En ese caso se agrupa por mes con `FORMAT(campo, 'yyyyMM')` antes de tomar
-  los dos ultimos meses; si no se marca, el filtro compara timestamps
+  los ultimos periodos; si no se marca, el filtro compara timestamps
   exactos y puede traer casi ninguna fila (ver caso `CALLBACK.[FECHA]`).
+- `periods` (opcional, default `2`): cantidad de periodos (meses) distintos
+  mas recientes a descargar. Debe ser un entero >= 1; si no lo es, la tabla
+  queda en `ERROR` en el resumen. No aplica si `date_field` esta vacio. Si la
+  tabla tiene menos periodos que los pedidos, descarga los que haya.
 
 ## Variables de entorno (`.env`)
 
