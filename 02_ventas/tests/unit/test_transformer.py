@@ -54,6 +54,25 @@ def test_convertir_tipos_fecha_no_estricto_coerciona_a_null():
     assert pd.isna(resultado["F"].iloc[1])
 
 
+def test_convertir_tipos_fecha_iso_con_primer_dia_menor_a_13_no_invierte_dia_mes():
+    # Caso real 2026-10-02: primeras filas de octubre (dia <=12) hacian que
+    # pandas infiriera '%Y-%d-%m' con dayfirst=True.
+    columnas = (ColumnaSpec("F", estricto=True, tipo="fecha"),)
+    df = pd.DataFrame({"F": [None, "2026-10-02 00:00:00", "2026-09-30 00:00:00"]})
+    resultado = transformer.convertir_tipos(df, columnas)
+    assert resultado["F"].iloc[1] == pd.Timestamp("2026-10-02").date()
+    assert resultado["F"].iloc[2] == pd.Timestamp("2026-09-30").date()
+    assert pd.isna(resultado["F"].iloc[0])
+
+
+def test_convertir_tipos_fecha_texto_chileno_es_dia_primero():
+    columnas = (ColumnaSpec("F", estricto=True, tipo="fecha"),)
+    df = pd.DataFrame({"F": ["2/10/2026", "22/7/2026"]})
+    resultado = transformer.convertir_tipos(df, columnas)
+    assert resultado["F"].iloc[0] == pd.Timestamp("2026-10-02").date()
+    assert resultado["F"].iloc[1] == pd.Timestamp("2026-07-22").date()
+
+
 def test_convertir_tipos_texto_no_estricto_trunca_en_silencio():
     columnas = (ColumnaSpec("T", 3, estricto=False),)
     df = pd.DataFrame({"T": ["abcdef"]})

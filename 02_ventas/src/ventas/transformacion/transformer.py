@@ -38,6 +38,33 @@ def seleccionar_columnas(df: pd.DataFrame, columnas: tuple[str, ...]) -> pd.Data
     return df[list(columnas)]
 
 
+_PATRON_FECHA_ISO = r"^\d{4}-\d{2}-\d{2}"
+
+
+def _parsear_fechas(original: pd.Series) -> pd.Series:
+    """Parsea una columna de fechas que puede traer dos formatos:
+
+    - ISO ('2026-09-30 00:00:00'): celdas que en Excel son fechas reales
+      (pd.read_excel con dtype=str las devuelve asi). Se leen con
+      format='ISO8601', SIN 'dayfirst'.
+    - Texto chileno/es-CL ('22/7/2026', dia/mes/anio, igual que el
+      LocaleID=10250 del .dtsx original): se leen con 'dayfirst=True' --
+      sin ese hint pandas asume mes/dia y deja NaT en muchas filas reales
+      (visto en produccion, 2026-09).
+
+    No se usa un solo pd.to_datetime(..., dayfirst=True) para todo: pandas
+    infiere UN formato a partir del primer valor, y con dayfirst=True un
+    ISO cuyo dia es <=12 ('2026-10-02') se infiere como '%Y-%d-%m' -- todas
+    las filas con dia >12 quedan NaT y las de dia <=12 se leen con dia y mes
+    invertidos (visto en produccion, 2026-10-02, 'Fecha Ingreso' de baseV2:
+    14.791 filas rechazadas desde que las primeras filas pasaron a octubre)."""
+    texto = original.astype("string").str.strip()
+    es_iso = texto.str.match(_PATRON_FECHA_ISO, na=False)
+    iso = pd.to_datetime(texto.where(es_iso), errors="coerce", format="ISO8601")
+    local = pd.to_datetime(original.where(~es_iso), errors="coerce", dayfirst=True)
+    return iso.where(es_iso, local)
+
+
 def convertir_tipos(df: pd.DataFrame, columnas: tuple[ColumnaSpec, ...]) -> pd.DataFrame:
     """Data Convert generico: para columnas tipo='numero'/'entero'/'fecha',
     castea con pandas y, si 'estricto=True' (FailComponent), levanta
@@ -83,14 +110,7 @@ def convertir_tipos(df: pd.DataFrame, columnas: tuple[ColumnaSpec, ...]) -> pd.D
             df[columna.nombre] = convertido.round().astype("Int64")
         elif columna.tipo == "fecha":
             original = df[columna.nombre]
-            # 'dayfirst=True': el origen es texto en formato chileno/es-CL
-            # (dia/mes/anio, igual que el LocaleID=10250 del .dtsx original) --
-            # sin este hint, pandas cae a un parseo ambiguo por fila (dateutil,
-            # asume mes/dia por defecto) que produce NaT en muchas filas reales
-            # cuyo dia<=12 vuelve la fecha ambigua, y en algunos casos falla
-            # directamente. Confirmado con datos reales (2026-09) que traen
-            # dias >12 (p.ej. '22/7/2026'), imposibles de leer como mes.
-            convertido = pd.to_datetime(original, errors="coerce", dayfirst=True)
+            convertido = _parsear_fechas(original)
             if columna.estricto:
                 invalidos = convertido.isna() & original.notna()
                 if invalidos.any():
