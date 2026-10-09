@@ -11,7 +11,8 @@ dbo.TBL_CORREO_BANDEJAS_SILVER).
   mismo criterio que bronze/silver) o completa (TRUNCATE + INSERT de todo
   silver). Cada fila lleva columnas de auditoria: TABLA_ORIGEN,
   PROCESO_CARGA, ID_EJECUCION (enlaza con dbo.TBL_CORREO_LOG_EJECUCION, ver
-  comun/ejecucion.py) y FECHA_CARGA.
+  comun/ejecucion.py) y FECHA_CARGA. En la carga por periodo, NUMERO_CASO
+  se refresca ademas en toda la tabla (ver sql.ACTUALIZAR_NUMERO_CASO_FACT).
 """
 
 from __future__ import annotations
@@ -91,6 +92,8 @@ def cargar_periodo_gold(
         sql.insert_fact(con_periodo=True), _params_auditoria(ejecucion, PROCESO_CARGA_PERIODO) + periodo
     )
     logger.info("%s fila(s) insertadas en %s (ejecucion %s).", insertadas, sql.FACT, ejecucion.id_ejecucion)
+    cambiadas = gateway.execute_script_rowcount(sql.ACTUALIZAR_NUMERO_CASO_FACT)
+    logger.info("%s: NUMERO_CASO actualizado en %s fila(s) de otros periodos.", sql.FACT, cambiadas)
     return eliminadas, insertadas
 
 

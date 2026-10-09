@@ -25,7 +25,8 @@ BEGIN
         ASUNTO_AGRUPADO                   NVARCHAR(50)   NULL,  -- REBOTE / PRESENTACIÓN / PRUEBA / PROMO; NULL si ninguna regla calza (ver silver/mappings.REGLAS_ASUNTO_AGRUPADO)
         COORDINADOR                       NVARCHAR(400)  NULL,  -- ORIGEN sin 'Registro_' ni extension, '_' -> ' ' (ver silver/cargar.coordinador_desde_origen)
         ID_PLACE                          INT            NULL,  -- 'SM<n>@movistar.cl' -> 51030000 + n (ver silver/cargar.id_place_desde_bandeja)
-        JEFATURA                          NVARCHAR(50)   NULL   -- [BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO] por ID_PLACE + mes UTC (ver silver/cargar.agregar_jefatura)
+        JEFATURA                          NVARCHAR(50)   NULL,  -- [BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO] por ID_PLACE + mes UTC (ver silver/cargar.agregar_jefatura)
+        NUMERO_CASO                       VARCHAR(500)   NULL   -- [CL_SEGUIMIENTO_ACTUAL].[dbo].[TBL_SEGUIMIENTO] por [To Addres] = ConversationID; varios casos separados por '; ' (ver silver/cargar.actualizar_numero_caso)
     );
 
     CREATE INDEX IX_TBL_CORREO_REGISTRO_SILVER_FechaHoraUTC ON dbo.TBL_CORREO_REGISTRO_SILVER (FechaHora_UTC_Texto);
@@ -90,4 +91,13 @@ GO
 -- [Jefatura] en el origen. Queda NULL hasta la siguiente carga de silver.
 IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'JEFATURA') IS NULL
     ALTER TABLE dbo.TBL_CORREO_REGISTRO_SILVER ADD JEFATURA NVARCHAR(50) NULL;
+GO
+
+-- Migracion: NUMERO_CASO (cruce con la base de seguimiento por
+-- ConversationID). Una conversacion puede tener varios casos concatenados
+-- ('19409574; 19411207; 19416165'): cada [Número del caso] mide 10 en el
+-- origen, 500 da para ~40 casos. Queda NULL hasta la siguiente carga de
+-- silver (cualquier corrida la recalcula sobre toda la tabla).
+IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'NUMERO_CASO') IS NULL
+    ALTER TABLE dbo.TBL_CORREO_REGISTRO_SILVER ADD NUMERO_CASO VARCHAR(500) NULL;
 GO

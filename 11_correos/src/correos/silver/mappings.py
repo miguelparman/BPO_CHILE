@@ -30,6 +30,18 @@ BASE_ID_PLACE = 51030000
 COLUMNA_JEFATURA = "JEFATURA"
 TABLA_PERSONAL = "[BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO]"
 
+# Numero(s) de caso de la conversacion, cruzando ConversationID con
+# [To Addres] de la base de seguimiento (hoy casi siempre trae correos; solo
+# los casos recientes traen ahi el ConversationID). Si una conversacion tiene
+# varios casos van TODOS, ordenados por apertura y separados por
+# SEPARADOR_CASOS. Sin caso = NULL. No se calcula en Python: es un UPDATE
+# sobre TODA la tabla silver en cada corrida (ver
+# cargar.actualizar_numero_caso), asi un caso abierto despues del correo
+# llega aunque su periodo ya no se recargue.
+COLUMNA_NUMERO_CASO = "NUMERO_CASO"
+TABLA_SEGUIMIENTO = "[CL_SEGUIMIENTO_ACTUAL].[dbo].[TBL_SEGUIMIENTO]"
+SEPARADOR_CASOS = "; "
+
 # Mismo campo de control de periodo que bronze (silver conserva el nombre):
 # se re-exporta para que gold lea todo lo de silver desde aqui, sin importar
 # bronze.

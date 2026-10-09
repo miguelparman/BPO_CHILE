@@ -7,7 +7,9 @@
     no son confiables (silver/mappings.COLUMNAS_EXCLUIDAS_SILVER), y con
     columnas derivadas: ASUNTO_AGRUPADO (ver
     silver/mappings.REGLAS_ASUNTO_AGRUPADO), COORDINADOR, ID_PLACE y
-    JEFATURA (cruce con silver/mappings.TABLA_PERSONAL por ID_PLACE + mes).
+    JEFATURA (cruce con silver/mappings.TABLA_PERSONAL por ID_PLACE + mes)
+    y NUMERO_CASO (cruce con silver/mappings.TABLA_SEGUIMIENTO por
+    ConversationID; se recalcula sobre toda la tabla en cada corrida).
   - TBL_CORREO_BANDEJAS_SILVER: TBL_CORREO_BANDEJAS + COORDINADOR + ID_PLACE.
 - Gold: modelo estrella en el esquema 'gold', lee SOLO de silver -- ver
   gold/cargar.py.
@@ -35,6 +37,7 @@ from silver.mappings import (
     COLUMNA_COORDINADOR,
     COLUMNA_ID_PLACE,
     COLUMNA_JEFATURA,
+    COLUMNA_NUMERO_CASO,
     COLUMNAS_BANDEJAS_SILVER_DESDE_BRONZE,
     COLUMNAS_SILVER_DESDE_BRONZE,
     BASE_ID_PLACE,
@@ -43,9 +46,11 @@ from silver.mappings import (
     ESQUEMA,
     PATRON_BANDEJA_ID_PLACE,
     REGLAS_ASUNTO_AGRUPADO,
+    SEPARADOR_CASOS,
     TABLA_BANDEJAS_SILVER,
     TABLA_PERSONAL,
     TABLA_REGISTRO_SILVER,
+    TABLA_SEGUIMIENTO,
 )
 
 _PREFIJO_ORIGEN = "registro_"
@@ -233,6 +238,55 @@ def _con_jefatura(gateway, silver_df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# Casos por ConversationID: [To Addres] normalizado (sin espacios, en
+# mayusculas) = ConversationID normalizado. Solo se consideran los [To Addres]
+# con forma de ConversationID (32 caracteres hexadecimales): el resto son
+# correos y nunca calzan. Todos los casos de la conversacion, por apertura.
+# Solo actualiza las filas cuyo valor cambia (incluye volver a NULL).
+ACTUALIZAR_NUMERO_CASO = f"""
+WITH casos AS (
+    SELECT
+        UPPER(LTRIM(RTRIM(t.[To Addres]))) AS CONVERSATION_ID,
+        STRING_AGG(CAST(LTRIM(RTRIM(t.[Número del caso])) AS VARCHAR(MAX)), '{SEPARADOR_CASOS}')
+            WITHIN GROUP (ORDER BY t.[Fecha/Hora de apertura], t.[Número del caso]) AS {COLUMNA_NUMERO_CASO}
+    FROM {TABLA_SEGUIMIENTO} t
+    WHERE LEN(LTRIM(RTRIM(t.[To Addres]))) = 32
+      AND LTRIM(RTRIM(t.[To Addres])) NOT LIKE '%[^0-9A-Fa-f]%'
+      AND t.[Número del caso] IS NOT NULL
+    GROUP BY UPPER(LTRIM(RTRIM(t.[To Addres])))
+)
+UPDATE s SET s.[{COLUMNA_NUMERO_CASO}] = c.{COLUMNA_NUMERO_CASO}
+FROM [{ESQUEMA}].[{TABLA_REGISTRO_SILVER}] s
+LEFT JOIN casos c ON c.CONVERSATION_ID = UPPER(LTRIM(RTRIM(s.[ConversationID])))
+WHERE ISNULL(s.[{COLUMNA_NUMERO_CASO}], '') <> ISNULL(c.{COLUMNA_NUMERO_CASO}, '');
+"""
+
+CONTAR_NUMERO_CASO = (
+    f"SELECT COUNT(*) AS FILAS, COUNT(s.[{COLUMNA_NUMERO_CASO}]) AS CON_CASO "
+    f"FROM [{ESQUEMA}].[{TABLA_REGISTRO_SILVER}] s"
+)
+
+
+def actualizar_numero_caso(gateway) -> int:
+    """Recalcula NUMERO_CASO en TODA la tabla silver (no solo el periodo):
+    un caso puede abrirse dias despues del correo. Devuelve filas cambiadas."""
+    cambiadas = gateway.execute_script_rowcount(ACTUALIZAR_NUMERO_CASO)
+    conteo = gateway.fetch_dataframe(CONTAR_NUMERO_CASO)
+    if not conteo.empty:
+        filas, con_caso = int(conteo.iloc[0]["FILAS"]), int(conteo.iloc[0]["CON_CASO"])
+        logger.info(
+            "%s: %s fila(s) cambiadas; %s de %s fila(s) de [%s].[%s] con caso (%s).",
+            COLUMNA_NUMERO_CASO,
+            cambiadas,
+            con_caso,
+            filas,
+            ESQUEMA,
+            TABLA_REGISTRO_SILVER,
+            TABLA_SEGUIMIENTO,
+        )
+    return cambiadas
+
+
 def construir_bandejas_silver(bronze_df: pd.DataFrame) -> pd.DataFrame:
     df = bronze_df.copy()
     df[COLUMNA_COORDINADOR] = df[COLUMNA_ORIGEN].map(coordinador_desde_origen)
@@ -275,6 +329,7 @@ def cargar_periodo_silver(gateway, fecha_inicio: datetime, fecha_fin: datetime) 
     )
     logger.info("%s fila(s) eliminadas de [%s].[%s] para el periodo.", eliminadas, ESQUEMA, TABLA_REGISTRO_SILVER)
     insertadas = gateway.bulk_insert(TABLA_REGISTRO_SILVER, silver_df, schema=ESQUEMA)
+    actualizar_numero_caso(gateway)
     return eliminadas, insertadas
 
 
@@ -287,7 +342,9 @@ def recargar_silver_completo(gateway) -> int:
     _log_reparto(silver_df)
 
     gateway.truncate_table(TABLA_REGISTRO_SILVER, schema=ESQUEMA)
-    return gateway.bulk_insert(TABLA_REGISTRO_SILVER, silver_df, schema=ESQUEMA)
+    insertadas = gateway.bulk_insert(TABLA_REGISTRO_SILVER, silver_df, schema=ESQUEMA)
+    actualizar_numero_caso(gateway)
+    return insertadas
 
 
 def cargar_bandejas_silver(gateway) -> int:

@@ -38,8 +38,11 @@ def _rango(desde: date, hasta: date) -> pd.DataFrame:
 
 
 def _tabla_de(sql: str) -> str:
-    """Tabla gold que escribe la sentencia (INSERT INTO / MERGE / DELETE FROM)."""
-    encontrada = re.search(rf"(?:INSERT INTO|MERGE|DELETE FROM) \[{ESQUEMA_GOLD}\]\.\[(\w+)\]", sql)
+    """Tabla gold que escribe la sentencia (INSERT INTO / MERGE / DELETE FROM /
+    UPDATE alias ... FROM)."""
+    encontrada = re.search(
+        rf"(?:INSERT INTO|MERGE|DELETE FROM|UPDATE \w+ SET .*?\sFROM) \[{ESQUEMA_GOLD}\]\.\[(\w+)\]", sql, re.DOTALL
+    )
     return encontrada.group(1) if encontrada else "?"
 
 
@@ -58,6 +61,7 @@ def test_periodo_carga_dimensiones_antes_que_hechos():
         TABLA_DIM_BANDEJA,
         TABLA_FACT_MENSAJE,  # DELETE del periodo
         TABLA_FACT_MENSAJE,  # INSERT del periodo
+        TABLA_FACT_MENSAJE,  # UPDATE de NUMERO_CASO en toda la tabla
     ]
     assert gateway.truncated_tables == []
 
@@ -68,12 +72,12 @@ def test_periodo_borra_e_inserta_hechos_del_mismo_rango():
 
     cargar_periodo_gold(gateway, *_PERIODO, _EJECUCION)
 
-    (sql_delete, params_delete), (sql_insert, params_insert) = gateway.deletes[-2:]
+    (sql_delete, params_delete), (sql_insert, params_insert) = gateway.deletes[-3:-1]
     assert sql_delete.startswith("DELETE") and params_delete == _PERIODO
     assert "INSERT INTO" in sql_insert and "WHERE" in sql_insert
     # Auditoria (TABLA_ORIGEN, PROCESO_CARGA, ID_EJECUCION, FECHA_CARGA) y luego el periodo.
     assert params_insert == _AUDITORIA_PERIODO + _PERIODO
-    for columna in ("TABLA_ORIGEN", "PROCESO_CARGA", "ID_EJECUCION", "FECHA_CARGA"):
+    for columna in ("TABLA_ORIGEN", "PROCESO_CARGA", "ID_EJECUCION", "FECHA_CARGA", "NUMERO_CASO"):
         assert columna in sql_insert
 
 
@@ -161,3 +165,25 @@ def test_validar_ok_y_no_cuadra():
     assert validar(gateway, _PERIODO) is True
     assert gateway.selects[0][1] == _PERIODO * 5
     assert gateway.selects[2][1] == ()
+
+
+def test_periodo_refresca_numero_caso_de_toda_la_tabla_desde_silver():
+    gateway = FakeDatabaseGateway()
+    gateway.resultados_select = [_rango(date(2026, 9, 16), date(2026, 9, 23))]
+
+    cargar_periodo_gold(gateway, *_PERIODO, _EJECUCION)
+
+    sql_update, params_update = gateway.deletes[-1]
+    assert sql_update.lstrip().startswith("UPDATE") and "NUMERO_CASO" in sql_update
+    assert "[TBL_CORREO_REGISTRO_SILVER]" in sql_update
+    # Sin periodo: tambien hechos de periodos que ya no se recargan.
+    assert params_update == ()
+
+
+def test_completo_no_necesita_refrescar_numero_caso():
+    gateway = FakeDatabaseGateway()
+    gateway.resultados_select = [_rango(date(2026, 9, 16), date(2026, 9, 23))]
+
+    recargar_gold_completo(gateway, _EJECUCION)
+
+    assert not any(sql.lstrip().startswith("UPDATE") for sql, _ in gateway.deletes)

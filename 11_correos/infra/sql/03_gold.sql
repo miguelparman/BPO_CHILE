@@ -123,6 +123,7 @@ BEGIN
                                             CONSTRAINT FK_FACT_MENSAJE_JEFATURA REFERENCES gold.DIM_JEFATURA (JEFATURA_KEY),
         ID_MENSAJE           NVARCHAR(200)  NULL,
         CONVERSATION_ID      NVARCHAR(200)  NULL,
+        NUMERO_CASO          VARCHAR(500)   NULL,  -- de silver; varios casos separados por '; ' (ver gold/sql.ACTUALIZAR_NUMERO_CASO_FACT)
         ASUNTO               NVARCHAR(MAX)  NULL,
         CONTACTO             NVARCHAR(MAX)  NULL,
         FECHA_HORA_UTC       DATETIME2(7)   NOT NULL,  -- campo de control de periodo, misma precision que silver (el DELETE por rango debe coincidir exacto)
@@ -167,4 +168,10 @@ IF OBJECT_ID('gold.FK_FACT_MENSAJE_JEFATURA', 'F') IS NULL
         FOREIGN KEY (JEFATURA_KEY) REFERENCES gold.DIM_JEFATURA (JEFATURA_KEY);
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_FACT_MENSAJE_JEFATURA_KEY' AND object_id = OBJECT_ID('gold.FACT_MENSAJE'))
     CREATE INDEX IX_FACT_MENSAJE_JEFATURA_KEY ON gold.FACT_MENSAJE (JEFATURA_KEY);
+GO
+
+-- Migracion: NUMERO_CASO (desde silver). Queda NULL hasta la siguiente carga
+-- de gold: la carga por periodo lo refresca en toda la tabla.
+IF COL_LENGTH('gold.FACT_MENSAJE', 'NUMERO_CASO') IS NULL
+    ALTER TABLE gold.FACT_MENSAJE ADD NUMERO_CASO VARCHAR(500) NULL;
 GO

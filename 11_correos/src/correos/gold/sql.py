@@ -17,7 +17,7 @@ from gold.mappings import (
     TABLA_DIM_TIPO,
     TABLA_FACT_MENSAJE,
 )
-from silver.mappings import COLUMNA_CONTROL_FECHA, TABLA_BANDEJAS_SILVER, TABLA_REGISTRO_SILVER
+from silver.mappings import COLUMNA_CONTROL_FECHA, COLUMNA_NUMERO_CASO, TABLA_BANDEJAS_SILVER, TABLA_REGISTRO_SILVER
 from silver.mappings import ESQUEMA as ESQUEMA_SILVER
 
 SILVER = f"[{ESQUEMA_SILVER}].[{TABLA_REGISTRO_SILVER}]"
@@ -161,7 +161,7 @@ def insert_fact(con_periodo: bool) -> str:
     sql = f"""
 INSERT INTO {FACT}
     (FECHA_KEY, HORA_LOCAL, BANDEJA_KEY, TIPO_KEY, ASUNTO_AGRUPADO_KEY, JEFATURA_KEY,
-     ID_MENSAJE, CONVERSATION_ID, ASUNTO, CONTACTO, FECHA_HORA_UTC, FECHA_HORA_LOCAL, CANTIDAD,
+     ID_MENSAJE, CONVERSATION_ID, NUMERO_CASO, ASUNTO, CONTACTO, FECHA_HORA_UTC, FECHA_HORA_LOCAL, CANTIDAD,
      TABLA_ORIGEN, PROCESO_CARGA, ID_EJECUCION, FECHA_CARGA)
 SELECT
     CONVERT(INT, CONVERT(CHAR(8), CAST(l.FECHA_HORA_LOCAL AS DATE), 112)),
@@ -170,7 +170,7 @@ SELECT
     ISNULL(t.TIPO_KEY, 0),
     ISNULL(a.ASUNTO_AGRUPADO_KEY, 0),
     ISNULL(j.JEFATURA_KEY, 0),
-    s.[ID_Mensaje], s.[ConversationID], s.[Asunto], s.[Contacto],
+    s.[ID_Mensaje], s.[ConversationID], s.[{COLUMNA_NUMERO_CASO}], s.[Asunto], s.[Contacto],
     s.[{COLUMNA_CONTROL_FECHA}], l.FECHA_HORA_LOCAL, 1,
     ?, ?, ?, ?
 FROM {SILVER} s
@@ -183,6 +183,23 @@ LEFT JOIN {DIM_JEFATURA} j ON j.JEFATURA = s.[JEFATURA]
     if con_periodo:
         sql += f"WHERE {_WHERE_PERIODO_SILVER}\n"
     return sql
+
+
+# NUMERO_CASO de silver se recalcula en TODA la tabla en cada corrida (un
+# caso puede abrirse despues del correo): se replica a los hechos de
+# periodos que ya no se recargan. Es el mismo valor para toda la
+# conversacion, por eso basta un valor por ConversationID.
+ACTUALIZAR_NUMERO_CASO_FACT = f"""
+UPDATE f SET f.NUMERO_CASO = c.NUMERO_CASO
+FROM {FACT} f
+LEFT JOIN (
+    SELECT s.[ConversationID], MAX(s.[{COLUMNA_NUMERO_CASO}]) AS NUMERO_CASO
+    FROM {SILVER} s
+    WHERE s.[ConversationID] IS NOT NULL
+    GROUP BY s.[ConversationID]
+) c ON c.[ConversationID] = f.CONVERSATION_ID
+WHERE ISNULL(f.NUMERO_CASO, '') <> ISNULL(c.NUMERO_CASO, '');
+"""
 
 
 DELETE_FACT_PERIODO = f"DELETE FROM {FACT} WHERE FECHA_HORA_UTC >= ? AND FECHA_HORA_UTC < ?"

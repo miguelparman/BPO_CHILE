@@ -11,6 +11,8 @@ import pytest
 
 from bronze.mappings import TABLA_BANDEJAS, TABLA_REGISTRO
 from silver.cargar import (
+    ACTUALIZAR_NUMERO_CASO,
+    actualizar_numero_caso,
     agrupar_asunto,
     cargar_bandejas_silver,
     cargar_periodo_silver,
@@ -21,7 +23,14 @@ from silver.cargar import (
     periodo_desde_utc,
     recargar_silver_completo,
 )
-from silver.mappings import COLUMNAS_EXCLUIDAS_SILVER, TABLA_BANDEJAS_SILVER, TABLA_PERSONAL, TABLA_REGISTRO_SILVER
+from silver.mappings import (
+    COLUMNAS_EXCLUIDAS_SILVER,
+    SEPARADOR_CASOS,
+    TABLA_BANDEJAS_SILVER,
+    TABLA_PERSONAL,
+    TABLA_REGISTRO_SILVER,
+    TABLA_SEGUIMIENTO,
+)
 from tests.unit.fakes import FakeDatabaseGateway
 
 
@@ -140,6 +149,11 @@ def test_cargar_periodo_silver_lee_bronze_y_reemplaza_el_periodo():
     assert "PERIODO" not in insertado.columns
     assert (eliminadas, insertadas) == (5, 2)
 
+    # NUMERO_CASO: despues del insert, UPDATE sobre toda silver (sin periodo).
+    assert len(gateway.deletes) == 2
+    sql_caso, params_caso = gateway.deletes[1]
+    assert sql_caso == ACTUALIZAR_NUMERO_CASO and params_caso == ()
+
 
 def test_recargar_silver_completo_trunca_y_lee_todo_bronze():
     gateway = FakeDatabaseGateway()
@@ -151,7 +165,7 @@ def test_recargar_silver_completo_trunca_y_lee_todo_bronze():
     assert "WHERE" not in sql_select
     assert params_select == ()
     assert gateway.truncated_tables == [TABLA_REGISTRO_SILVER]
-    assert gateway.deletes == []
+    assert [sql for sql, _ in gateway.deletes] == [ACTUALIZAR_NUMERO_CASO]
     assert insertadas == 2
 
 
@@ -262,3 +276,23 @@ def test_agregar_jefatura_cruza_por_place_y_mes_sin_duplicar_filas():
     assert len(resultado) == 4
     assert list(resultado["JEFATURA"]) == ["Triadas", None, "Carterizados", None]
 
+
+def test_actualizar_numero_caso_cruza_conversation_id_sobre_toda_silver():
+    sql = ACTUALIZAR_NUMERO_CASO
+    assert TABLA_SEGUIMIENTO in sql and f"[{TABLA_REGISTRO_SILVER}]" in sql
+    assert "[To Addres]" in sql and "[ConversationID]" in sql and "[Número del caso]" in sql
+    # Todos los casos de la conversacion, por apertura, con el separador.
+    assert f"'{SEPARADOR_CASOS}'" in sql and "ORDER BY t.[Fecha/Hora de apertura]" in sql
+    # LEFT JOIN: un caso que desaparece del origen vuelve la fila a NULL.
+    assert "LEFT JOIN casos" in sql
+    # Sin filtro de periodo: toda la tabla, en cada corrida.
+    assert "?" not in sql
+
+
+def test_actualizar_numero_caso_devuelve_filas_cambiadas():
+    gateway = FakeDatabaseGateway()
+    gateway.filas_a_eliminar = 7
+    gateway.resultado_select = pd.DataFrame({"FILAS": [100], "CON_CASO": [3]})
+
+    assert actualizar_numero_caso(gateway) == 7
+    assert gateway.deletes == [(ACTUALIZAR_NUMERO_CASO, ())]
