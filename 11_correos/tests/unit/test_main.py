@@ -94,3 +94,8 @@ def test_aviso_con_fechas_por_linea_de_comandos():
 def test_aviso_con_fechas_en_env():
     aviso = main.aviso_periodo_manual(PERIODO, None, None, _settings("2026-09-01", "2026-09-30"))
     assert "'.env'" in aviso
+
+
+def test_sin_validar_es_opcional():
+    assert main.parse_args([]).sin_validar is False
+    assert main.parse_args(["--solo", "gold", "--sin-validar"]).sin_validar is True

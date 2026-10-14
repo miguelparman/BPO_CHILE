@@ -25,6 +25,11 @@ Uso:
     python main.py --solo gold --completo     # reconstruir una etapa completa (silver/gold)
     python main.py --fecha-inicio 2026-09-01 --fecha-fin 2026-09-30
     python main.py --verificar-copia          # solo auditar la copia de ingesta
+    python main.py --sin-validar              # sin validar conexiones al inicio (emergencia)
+
+Antes de cualquier etapa se validan las conexiones que usa la corrida (ver
+comun/conexiones.py): si alguna no responde, el ETL no se ejecuta y se
+pregunta en consola si reintentar o cancelar.
 """
 
 from __future__ import annotations
@@ -39,7 +44,8 @@ BASE_DIR = Path(__file__).resolve().parent  # 11_correos/: para '.env' y 'logs/'
 sys.path.insert(0, str(BASE_DIR / "src" / "correos"))
 
 from bronze.cargar import ejecutar_bronze
-from comun.config import Settings, cargar_configuracion, cargar_configuracion_db
+from comun.conexiones import validar_conexiones, verificaciones_para
+from comun.config import DbSettings, Settings, cargar_configuracion, cargar_configuracion_db
 from comun.db import DatabaseGateway, crear_conexion
 from comun.ejecucion import (
     ESTADO_ERROR,
@@ -75,6 +81,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--completo",
         action="store_true",
         help="Silver/gold se reconstruyen completos (sin filtro de periodo). Solo con --solo/--desde silver|gold.",
+    )
+    parser.add_argument(
+        "--sin-validar",
+        action="store_true",
+        help="No valida las conexiones al inicio (solo para emergencias).",
     )
     parser.add_argument("--fecha-inicio", default=None, help="UTC; solo fecha (2026-09-01) o fecha y hora. Si se omite, FECHA_INICIO de '.env' (vacia = periodo automatico).")
     parser.add_argument("--fecha-fin", default=None, help="UTC; solo fecha (2026-09-30, dia incluido completo) o fecha y hora (exclusiva). Si se omite, FECHA_FIN de '.env' (vacia = periodo automatico).")
@@ -162,6 +173,16 @@ def estado_final(archivos_no_copiados: int, validacion_gold: str | None) -> tupl
     return (ESTADO_ERROR, " ".join(problemas)) if problemas else (ESTADO_OK, None)
 
 
+def _conexiones_disponibles(args: argparse.Namespace, settings: Settings, db_settings: DbSettings | None) -> bool:
+    if args.sin_validar:
+        logger.warning("ATENCION: --sin-validar, no se validan las conexiones antes de ejecutar.")
+        return True
+    if validar_conexiones(verificaciones_para(args.etapas, args.verificar_copia, settings, db_settings)):
+        return True
+    logger.error("Proceso cancelado: hay conexiones no disponibles, el ETL no se ejecuto.")
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     settings = cargar_configuracion(BASE_DIR, fecha_inicio=args.fecha_inicio, fecha_fin=args.fecha_fin)
@@ -169,6 +190,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.verificar_copia:
+            if not _conexiones_disponibles(args, settings, None):
+                return 1
             return 0 if ejecutar_verificacion(settings) else 1
 
         # El periodo se valida ANTES de empezar: no tiene sentido copiar si
@@ -188,9 +211,13 @@ def main(argv: list[str] | None = None) -> int:
         if aviso:
             logger.warning(aviso)
 
+        # Antes de tocar nada: si alguna conexion no responde, no se ejecuta.
+        db_settings = cargar_configuracion_db(BASE_DIR)
+        if not _conexiones_disponibles(args, settings, db_settings):
+            return 1
+
         # La conexion se abre al inicio (aun si solo corre la ingesta): toda
         # corrida queda registrada en dbo.TBL_CORREO_LOG_EJECUCION.
-        db_settings = cargar_configuracion_db(BASE_DIR)
         conn = crear_conexion(db_settings)
         try:
             gateway = DatabaseGateway(conn, batch_size=db_settings.batch_size)

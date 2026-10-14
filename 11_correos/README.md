@@ -41,7 +41,7 @@ sus tablas y columnas.
 
 ```
 11_correos/
-├── main.py                        # único punto de entrada: --desde / --solo / --completo / --verificar-copia
+├── main.py                        # único punto de entrada: --desde / --solo / --completo / --verificar-copia / --sin-validar
 ├── src/correos/
 │   ├── comun/                     # lo que usan todas las capas
 │   │   ├── config.py              # .env -> Settings (credenciales SharePoint + SQL Server, periodo)
@@ -270,7 +270,24 @@ python main.py --solo gold --completo       # reconstruir una etapa completa (so
 python main.py --desde silver --completo    # reconstruir silver y gold (tras cambiar reglas)
 python main.py --fecha-inicio 2026-09-01 --fecha-fin 2026-09-30   # otro periodo que el de .env
 python main.py --verificar-copia            # solo auditar la copia de ingesta
+python main.py --sin-validar                # sin validar conexiones al inicio (solo emergencias)
 ```
+
+### Validación de conexiones
+
+Antes de cualquier etapa se prueban las conexiones que usa la corrida
+(`src/correos/comun/conexiones.py`): SQL Server `CL_MOVIL` (siempre), las
+tablas cruzadas en silver (`CL_DATA.TBL_HISTORICO_PLACES`,
+`CL_SEGUIMIENTO_ACTUAL.TBL_SEGUIMIENTO`) y SharePoint origen/destino según la
+etapa. Si alguna no responde **el ETL no se ejecuta** (no se copia, borra ni
+carga nada) y la consola pregunta `[R] Reintentar / [C] Cancelar`:
+
+- `R` vuelve a probar solo las que fallaron; si responden, el ETL sigue.
+- `C` cancela (código `1`).
+- Sin respuesta en 5 min (o sin consola): reintenta solo hasta 3 veces, cada
+  5 min, y si sigue fallando cancela.
+
+La cancelación queda solo en `logs/` (no en `TBL_CORREO_LOG_EJECUCION`).
 
 Un fallo en una etapa detiene las siguientes pero **no deshace** las
 anteriores (los archivos ya copiados quedan en SharePoint, bronze/silver
