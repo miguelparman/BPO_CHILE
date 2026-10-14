@@ -13,6 +13,19 @@ class ExtraccionError(EpaWspError):
     o el CSV local de Medallia)."""
 
 
+class ContrasenaMedalliaCaducadaError(ExtraccionError):
+    """El portal Medallia pide cambiar la contrasena (caduco): la descarga no
+    puede seguir hasta que alguien la cambie en la web y la actualice en '.env'."""
+
+    def __init__(self, usuario: str, url_login: str) -> None:
+        super().__init__(
+            f"La contrasena del usuario Medallia '{usuario}' caduco: el portal pide cambiarla. "
+            "Cambiarla en el portal y actualizar MEDALLIA_PASSWORD en '.env'."
+        )
+        self.usuario = usuario
+        self.url_login = url_login
+
+
 class ValidacionError(EpaWspError):
     """Un origen o el esquema de una tabla no cumple lo que espera el proceso
     (columnas, tipos, anchos o periodos). Se lanza ANTES de borrar nada, para

@@ -41,7 +41,7 @@ import mappings
 import sql
 from carga import loader
 from config import MedalliaSettings
-from exceptions import PipelineError
+from exceptions import ContrasenaMedalliaCaducadaError, PipelineError
 from extraccion import extractor, medallia_descarga
 from models import ResultadoPipeline
 from transformacion import transformer
@@ -178,6 +178,8 @@ class EpaWspPipeline:
                 raise PipelineError(self.name, paso, exc) from exc
             logger.error("[EPA_WSP] Fallo en '%s' (se continua, como en el .dtsx): %s", paso, exc)
             r.pasos_fallidos.append((paso, str(exc)))
+            if isinstance(exc, ContrasenaMedalliaCaducadaError):
+                r.medallia_contrasena_caducada = True
             return None
 
     def _sql(self, r: ResultadoPipeline, paso: str, accion: Callable) -> bool:

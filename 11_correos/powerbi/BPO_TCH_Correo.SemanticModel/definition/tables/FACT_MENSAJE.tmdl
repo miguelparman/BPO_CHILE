@@ -193,17 +193,22 @@ table FACT_MENSAJE
 		summarizeBy: none
 		sourceColumn: JEFATURA_KEY
 
+	column NUMERO_CASO
+		dataType: string
+		displayFolder: Detalle
+		lineageTag: 8c446865-9116-4e77-82d4-a490259263a0
+		summarizeBy: none
+		sourceColumn: NUMERO_CASO
+
+		annotation SummarizationSetBy = Automatic
+
 	partition FACT_MENSAJE = m
 		mode: import
 		source =
 				let
 				    Origen = Sql.Database(Servidor, BaseDatos),
 				    Tabla = Origen{[Schema = "gold", Item = "FACT_MENSAJE"]}[Data],
-				    Columnas = Table.SelectColumns(Tabla, {
-				        "MENSAJE_KEY", "FECHA_KEY", "HORA_LOCAL", "BANDEJA_KEY", "TIPO_KEY", "ASUNTO_AGRUPADO_KEY", "JEFATURA_KEY",
-				        "ID_MENSAJE", "CONVERSATION_ID", "ASUNTO", "CONTACTO", "FECHA_HORA_UTC", "FECHA_HORA_LOCAL", "CANTIDAD",
-				        "TABLA_ORIGEN", "PROCESO_CARGA", "ID_EJECUCION", "FECHA_CARGA"
-				    })
+				    Columnas = Table.SelectColumns(Tabla,{"MENSAJE_KEY", "FECHA_KEY", "HORA_LOCAL", "BANDEJA_KEY", "TIPO_KEY", "ASUNTO_AGRUPADO_KEY", "ID_MENSAJE", "CONVERSATION_ID", "ASUNTO", "CONTACTO", "FECHA_HORA_UTC", "FECHA_HORA_LOCAL", "CANTIDAD", "TABLA_ORIGEN", "PROCESO_CARGA", "ID_EJECUCION", "FECHA_CARGA", "JEFATURA_KEY", "NUMERO_CASO"})
 				in
 				    Columnas
 

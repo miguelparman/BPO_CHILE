@@ -10,4 +10,22 @@ REM asi que el "cd /d" garantiza que .env, config/reports.py y
 REM playwright/.auth/ se resuelvan sin importar el directorio de trabajo
 REM que use la tarea programada.
 cd /d "%~dp0"
+
+REM Al reanudar desde suspension la red (Wi-Fi/VPN) tarda en levantar. Se
+REM espera hasta 15 min (90 intentos x 10 s) a que SharePoint responda por
+REM 443; si no responde se ejecuta igual y el error queda en el log.
+set "intentos=0"
+:esperar_red
+powershell -NoProfile -Command "$c=New-Object Net.Sockets.TcpClient; try{ if($c.ConnectAsync('fractaliagroup.sharepoint.com',443).Wait(3000)){exit 0}else{exit 1} }catch{exit 1}finally{$c.Dispose()}"
+if not errorlevel 1 goto red_ok
+set /a intentos+=1
+if %intentos% geq 90 (
+    echo [%date% %time%] Sin red tras 15 min, se ejecuta igual.
+    goto red_ok
+)
+echo [%date% %time%] Esperando red... intento %intentos%
+timeout /t 10 /nobreak >nul
+goto esperar_red
+:red_ok
+
 python.exe main.py

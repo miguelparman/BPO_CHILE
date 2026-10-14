@@ -44,7 +44,7 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 from config import MedalliaSettings
-from exceptions import ExtraccionError
+from exceptions import ContrasenaMedalliaCaducadaError, ExtraccionError
 
 logger = logging.getLogger("epa_wsp")
 
@@ -53,6 +53,11 @@ SEL_PASSWORD = '[name="password"]'
 SEL_INGRESAR = 'button[type="submit"]'
 SEL_MENU_EXPORTAR = "#openExportMenu"
 SEL_EXPORTAR_CSV = 'button[data-title="CSV"]'
+
+# Pagina a la que redirige el portal tras el login cuando la contrasena caduco
+# (resetPassword.do); sin este control el error aparecia mas adelante como un
+# timeout en #openExportMenu, porque el portal cierra la sesion.
+URL_CONTRASENA_CADUCADA = "resetPassword.do"
 
 # Timeouts del original (WebDriverWait), en milisegundos.
 TIMEOUT_LOGIN_MS = 20_000
@@ -84,6 +89,8 @@ def exportar_csv(page, settings: MedalliaSettings):
     page.locator(SEL_PASSWORD).fill(settings.password)
     page.locator(SEL_INGRESAR).click()
     page.wait_for_url(lambda url: url != settings.url_login, timeout=TIMEOUT_LOGIN_MS)
+    if URL_CONTRASENA_CADUCADA in page.url:
+        raise ContrasenaMedalliaCaducadaError(settings.usuario, settings.url_login)
     logger.info("Medallia: sesion iniciada; abriendo la pagina de registros.")
 
     page.goto(settings.url_registros)

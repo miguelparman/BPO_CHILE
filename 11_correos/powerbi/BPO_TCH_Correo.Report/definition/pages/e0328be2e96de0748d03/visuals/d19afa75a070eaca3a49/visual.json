@@ -1,5 +1,5 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
   "name": "d19afa75a070eaca3a49",
   "position": {
     "x": 31.152860802732707,
@@ -154,9 +154,40 @@
               },
               "queryRef": "DIM_BANDEJA.COORDINADOR",
               "nativeQueryRef": "COORDINADOR"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FACT_MENSAJE"
+                    }
+                  },
+                  "Property": "NUMERO_CASO"
+                }
+              },
+              "queryRef": "FACT_MENSAJE.NUMERO_CASO",
+              "nativeQueryRef": "NUMERO_CASO"
             }
           ]
         }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "FACT_MENSAJE"
+                  }
+                },
+                "Property": "NUMERO_CASO"
+              }
+            },
+            "direction": "Descending"
+          }
+        ]
       }
     },
     "objects": {

@@ -44,8 +44,9 @@ class FakeLocator:
 
 
 class FakePage:
-    def __init__(self, descarga=None, falla_en=None):
+    def __init__(self, descarga=None, falla_en=None, url_tras_login="https://telefonicacl.medallia.com/telefonicacl/home"):
         self.acciones: list = []
+        self.url_tras_login = url_tras_login
         self.url = ""
         self.descarga = descarga or FakeDownload(f"{PREFIJO}20260929.csv")
         self.falla_en = falla_en
@@ -59,7 +60,7 @@ class FakePage:
         return FakeLocator(self, selector)
 
     def wait_for_url(self, predicado, timeout):
-        self.url = "https://telefonicacl.medallia.com/telefonicacl/home"
+        self.url = self.url_tras_login
         assert predicado(self.url) and not predicado("https://telefonicacl.medallia.com/telefonicacl/")
         self.acciones.append(("wait_for_url", timeout))
 
@@ -155,6 +156,15 @@ def test_timeout_en_el_portal_es_extraccion_error_con_captura(tmp_path):
     with pytest.raises(ExtraccionError, match="openExportMenu"):
         md.descargar_encuestas(s, FakeCarpeta(), abrir_pagina=_abridor(page))
     assert len(page.capturas) == 1 and Path(page.capturas[0]).parent == s.carpeta_capturas
+
+
+def test_contrasena_caducada_es_extraccion_error_clara_con_captura(tmp_path):
+    s = _settings(tmp_path)
+    page = FakePage(url_tras_login="https://telefonicacl.medallia.com/telefonicacl/resetPassword.do?showError=true")
+    with pytest.raises(ExtraccionError, match="caduco"):
+        md.descargar_encuestas(s, FakeCarpeta(), abrir_pagina=_abridor(page))
+    assert ("goto", s.url_registros) not in page.acciones
+    assert len(page.capturas) == 1
 
 
 def test_navegador_invalido(tmp_path):

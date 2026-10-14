@@ -11,6 +11,7 @@ class ResultadoPipeline:
     periodos: dict[str, list[int]] = field(default_factory=dict)  # tabla -> ventana reemplazada
     alerta_ok: bool | None = None
     medallia_descargado: bool | None = None
+    medallia_contrasena_caducada: bool = False  # el portal pidio cambiar la contrasena
     medallia_rechazadas: int = 0  # filas omitidas (Responsedate invalida o INSERT fallido)
     pasos_fallidos: list[tuple[str, str]] = field(default_factory=list)  # (paso, error)
     log_fin: bool = False

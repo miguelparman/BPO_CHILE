@@ -4,7 +4,7 @@ import pytest
 
 import mappings
 from config import MedalliaSettings
-from exceptions import PipelineError
+from exceptions import ContrasenaMedalliaCaducadaError, PipelineError
 from pipeline import EpaWspPipeline
 from tests.unit.fakes import (
     FakeCarpeta, FakeCsvReader, FakeDatabaseGateway, csv_de, csv_medallia_df, csvs_minimos, fila_wsp,
@@ -133,6 +133,17 @@ def test_fallo_de_la_descarga_medallia_carga_el_csv_existente():
     nombres = _nombres(eventos)
     assert "INSERT TBL_ENCUESTAS_MEDALLIA" in nombres and "Log_Fin" in nombres
     assert r.medallia_descargado is None and r.pasos_fallidos[0][0] == "MEDALIA / DESCARGA_MEDALLIA"
+    assert not r.medallia_contrasena_caducada
+
+
+def test_contrasena_medallia_caducada_queda_marcada_y_el_proceso_continua():
+    def caducada():
+        raise ContrasenaMedalliaCaducadaError("u", "https://medallia/login")
+
+    pipeline, eventos, _ = _build(descarga=caducada)
+    r = pipeline.run()
+    assert r.medallia_contrasena_caducada
+    assert "INSERT TBL_ENCUESTAS_MEDALLIA" in _nombres(eventos) and "Log_Fin" in _nombres(eventos)
 
 
 def test_insert_masivo_medallia_fallido_reintenta_fila_a_fila():

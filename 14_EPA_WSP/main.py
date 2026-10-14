@@ -42,7 +42,7 @@ sys.path.insert(0, str(BASE_DIR / "src" / "epa_wsp"))  # permite 'import mapping
 
 from config import cargar_configuracion  # noqa: E402
 from db import DatabaseGateway, crear_conexion  # noqa: E402
-from exceptions import EpaWspError, PipelineError  # noqa: E402
+from exceptions import ContrasenaMedalliaCaducadaError, EpaWspError, PipelineError  # noqa: E402
 from logging_setup import NOMBRE_LOGGER, configurar_logging  # noqa: E402
 from pipeline import EpaWspPipeline  # noqa: E402
 from sharepoint.auth import GraphAuthError, get_graph_token  # noqa: E402
@@ -51,6 +51,23 @@ from sharepoint.client import SharePointClient, SharePointResolutionError  # noq
 from sharepoint.reader import CsvReader  # noqa: E402
 
 logger = logging.getLogger(NOMBRE_LOGGER)
+
+
+def _avisar_contrasena_medallia_caducada(usuario: str, url_login: str) -> None:
+    """Aviso destacado al final de la consola (y en el log): sin cambio de
+    contrasena en la web, la carga Medallia sigue usando el CSV anterior."""
+    linea = "!" * 78
+    logger.warning(
+        "\n%s\n"
+        "  ATENCION: MEDALLIA PIDE CAMBIO DE CONTRASENA\n"
+        "  La contrasena del usuario '%s' caduco en el portal Medallia.\n"
+        "  Hoy NO se descargaron encuestas nuevas: se cargo el CSV anterior.\n"
+        "  1) Entrar a %s con ese usuario y crear la contrasena nueva.\n"
+        "  2) Actualizar MEDALLIA_PASSWORD en el archivo .env de este proyecto.\n"
+        "  3) Volver a ejecutar: python main.py\n"
+        "%s",
+        linea, usuario, url_login, linea,
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -100,11 +117,15 @@ def main() -> int:
         resultado = pipeline.run(solo_validar=args.solo_validar)
         for paso, error in resultado.pasos_fallidos:
             logger.error("Paso fallido: %s -> %s", paso, error)
+        if resultado.medallia_contrasena_caducada:
+            _avisar_contrasena_medallia_caducada(settings.medallia.usuario, settings.medallia.url_login)
         return 0 if resultado.exitoso else 1
 
     except PipelineError as exc:
         logger.error("Error durante el proceso EPA/WSP: %s", exc)
         logger.exception("Detalle del error:")
+        if isinstance(exc.causa, ContrasenaMedalliaCaducadaError):  # --estricto
+            _avisar_contrasena_medallia_caducada(exc.causa.usuario, exc.causa.url_login)
         return 1
     except (GraphAuthError, SharePointResolutionError) as exc:
         logger.error("Error conectando con SharePoint (Microsoft Graph): %s", exc)
