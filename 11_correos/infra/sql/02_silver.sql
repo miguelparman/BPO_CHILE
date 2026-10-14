@@ -25,7 +25,7 @@ BEGIN
         ASUNTO_AGRUPADO                   NVARCHAR(50)   NULL,  -- REBOTE / PRESENTACIÓN / PRUEBA / PROMO; NULL si ninguna regla calza (ver silver/mappings.REGLAS_ASUNTO_AGRUPADO)
         COORDINADOR                       NVARCHAR(400)  NULL,  -- ORIGEN sin 'Registro_' ni extension, '_' -> ' ' (ver silver/cargar.coordinador_desde_origen)
         ID_PLACE                          INT            NULL,  -- 'SM<n>@movistar.cl' -> 51030000 + n (ver silver/cargar.id_place_desde_bandeja)
-        JEFATURA                          NVARCHAR(50)   NULL,  -- [BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO] por ID_PLACE + mes UTC (ver silver/cargar.agregar_jefatura)
+        JEFATURA                          NVARCHAR(50)   NULL,  -- [CL_DATA].[dbo].[TBL_HISTORICO_PLACES].[Plataforma] por ID_PLACE + dia UTC o foto anterior (ver silver/cargar.agregar_jefatura)
         NUMERO_CASO                       VARCHAR(500)   NULL   -- [CL_SEGUIMIENTO_ACTUAL].[dbo].[TBL_SEGUIMIENTO] por [To Addres] = ConversationID; varios casos separados por '; ' (ver silver/cargar.actualizar_numero_caso)
     );
 
@@ -87,8 +87,9 @@ IF COL_LENGTH('dbo.TBL_CORREO_BANDEJAS_SILVER', 'ID_PLACE') IS NULL
     ALTER TABLE dbo.TBL_CORREO_BANDEJAS_SILVER ADD ID_PLACE INT NULL;
 GO
 
--- Migracion: JEFATURA (cruce con la base de personal). Mismo ancho que
--- [Jefatura] en el origen. Queda NULL hasta la siguiente carga de silver.
+-- Migracion: JEFATURA (originalmente cruce con la base de personal; hoy
+-- [Plataforma] de TBL_HISTORICO_PLACES, varchar(30): el ancho alcanza).
+-- Queda NULL hasta la siguiente carga de silver.
 IF COL_LENGTH('dbo.TBL_CORREO_REGISTRO_SILVER', 'JEFATURA') IS NULL
     ALTER TABLE dbo.TBL_CORREO_REGISTRO_SILVER ADD JEFATURA NVARCHAR(50) NULL;
 GO

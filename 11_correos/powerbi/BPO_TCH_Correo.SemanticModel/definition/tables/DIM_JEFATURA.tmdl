@@ -1,4 +1,4 @@
-/// Jefatura del asesor en el mes del mensaje (Triadas, Carterizados, ...), desde BBDD_GENERAL.dbo.TBL_PERSONAL_CONSOLIDADO; vacio = sin jefatura (gold.DIM_JEFATURA).
+/// Jefatura (Plataforma normalizada) del place en el dia UTC del mensaje (Triadas, Carterizados, ...), desde CL_DATA.dbo.TBL_HISTORICO_PLACES (foto del dia o la anterior mas reciente); vacio = sin jefatura (gold.DIM_JEFATURA).
 table DIM_JEFATURA
 	lineageTag: 3a1f10a3-1158-4e0d-8878-9c463bb7f800
 

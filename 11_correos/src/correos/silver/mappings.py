@@ -23,12 +23,18 @@ COLUMNA_ID_PLACE = "ID_PLACE"
 PATRON_BANDEJA_ID_PLACE = r"^SM(\d+)@movistar\.cl$"
 BASE_ID_PLACE = 51030000
 
-# Jefatura del asesor en el mes del mensaje, cruzando con la base de personal:
-# ID_PLACE + periodo AAAAMM de FechaHora_UTC_Texto (UTC) contra
-# [ID Place] + [Periodo]. Sin fila para ese mes = NULL (no se arrastra la de
-# otro mes). Solo en TBL_CORREO_REGISTRO_SILVER: bandejas no tiene fecha.
+# Jefatura del place en el dia del mensaje, cruzando con la foto diaria de
+# places: ID_PLACE + fecha (sin hora) de FechaHora_UTC_Texto (UTC) contra
+# [ID] + [Fecha Impacto], tomando [Plataforma]. Si no hay foto de ese dia se
+# usa la mas reciente anterior de ese ID (las fotos con [Plataforma] NULL no
+# cuentan); sin ninguna = NULL. Normalizacion (ver
+# cargar.normalizar_plataforma): todo lo que contenga 'triada' -> 'Triadas';
+# lo que venga en MAYUSCULAS -> 'Capitalizado' (CARTERIZADOS -> Carterizados),
+# el mismo formato que tenia la base de personal anterior. Solo en
+# TBL_CORREO_REGISTRO_SILVER: bandejas no tiene fecha.
 COLUMNA_JEFATURA = "JEFATURA"
-TABLA_PERSONAL = "[BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO]"
+TABLA_HISTORICO_PLACES = "[CL_DATA].[dbo].[TBL_HISTORICO_PLACES]"
+JEFATURA_TRIADAS = "Triadas"
 
 # Numero(s) de caso de la conversacion, cruzando ConversationID con
 # [To Addres] de la base de seguimiento (hoy casi siempre trae correos; solo

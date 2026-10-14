@@ -7,7 +7,7 @@
 --   gold.DIM_BANDEJA           bandeja + ID Place + asesor + coordinador (1:1 bandeja-asesor)
 --   gold.DIM_TIPO              Entrada / Salida
 --   gold.DIM_ASUNTO_AGRUPADO   REBOTE / PRESENTACIÓN / PRUEBA / PROMO
---   gold.DIM_JEFATURA          jefatura del asesor en el mes del mensaje (Triadas, Carterizados, ...)
+--   gold.DIM_JEFATURA          jefatura (plataforma) del place en el dia del mensaje (Triadas, Carterizados, ...)
 --
 -- Cada dimension (salvo DIM_FECHA) tiene un miembro de clave 0 con
 -- descripcion vacia: la fila de hechos cuyo valor en silver es NULL apunta

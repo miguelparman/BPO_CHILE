@@ -7,7 +7,8 @@
     no son confiables (silver/mappings.COLUMNAS_EXCLUIDAS_SILVER), y con
     columnas derivadas: ASUNTO_AGRUPADO (ver
     silver/mappings.REGLAS_ASUNTO_AGRUPADO), COORDINADOR, ID_PLACE y
-    JEFATURA (cruce con silver/mappings.TABLA_PERSONAL por ID_PLACE + mes)
+    JEFATURA (cruce con silver/mappings.TABLA_HISTORICO_PLACES por ID_PLACE +
+    dia UTC, o la foto anterior mas reciente)
     y NUMERO_CASO (cruce con silver/mappings.TABLA_SEGUIMIENTO por
     ConversationID; se recalcula sobre toda la tabla en cada corrida).
   - TBL_CORREO_BANDEJAS_SILVER: TBL_CORREO_BANDEJAS + COORDINADOR + ID_PLACE.
@@ -44,11 +45,12 @@ from silver.mappings import (
     CAMPO_ASUNTO,
     CAMPO_CONTACTO,
     ESQUEMA,
+    JEFATURA_TRIADAS,
     PATRON_BANDEJA_ID_PLACE,
     REGLAS_ASUNTO_AGRUPADO,
     SEPARADOR_CASOS,
     TABLA_BANDEJAS_SILVER,
-    TABLA_PERSONAL,
+    TABLA_HISTORICO_PLACES,
     TABLA_REGISTRO_SILVER,
     TABLA_SEGUIMIENTO,
 )
@@ -161,78 +163,131 @@ def construir_silver(bronze_df: pd.DataFrame) -> pd.DataFrame:
     return _con_id_place(df, "Bandeja")
 
 
-def periodo_desde_utc(fechas: pd.Series) -> pd.Series:
-    """Periodo AAAAMM (entero, como [Periodo] de TABLA_PERSONAL) de cada
-    FechaHora_UTC_Texto: 2026-09-30 23:10 UTC -> 202609. NULL si no hay fecha."""
-    fechas = pd.to_datetime(fechas, errors="coerce")
-    return (fechas.dt.year * 100 + fechas.dt.month).astype("Int64")
+def fecha_desde_utc(fechas: pd.Series) -> pd.Series:
+    """Dia (sin hora, en UTC) de cada FechaHora_UTC_Texto, para cruzar con
+    [Fecha Impacto]: 2026-09-30 23:10 UTC -> 2026-09-30. NaT si no hay fecha."""
+    return pd.to_datetime(fechas, errors="coerce").dt.normalize()
 
 
-def jefatura_por_place_periodo(personal_df: pd.DataFrame) -> pd.DataFrame:
-    """Una fila por (ID_PLACE, PERIODO) con su JEFATURA. [ID Place] es texto en
-    el origen (trae valores como '-'): lo que no es numerico se descarta. Si un
-    par tiene mas de una jefatura se toma la mas frecuente (empate: la primera
-    alfabetica) y se avisa en el log."""
+def normalizar_plataforma(plataforma: object) -> str | None:
+    """[Plataforma] -> JEFATURA: todo lo que contenga 'triada' (sin distinguir
+    mayusculas) -> JEFATURA_TRIADAS; lo que venga en MAYUSCULAS se capitaliza
+    (CARTERIZADOS -> Carterizados), el resto queda tal cual. None si vacio."""
+    if not isinstance(plataforma, str) or not plataforma.strip():
+        return None
+    valor = plataforma.strip()
+    if "triada" in valor.casefold():
+        return JEFATURA_TRIADAS
+    if valor.isupper():
+        return valor.capitalize()
+    return valor
+
+
+def jefatura_por_place_fecha(places_df: pd.DataFrame) -> pd.DataFrame:
+    """Una fila por (ID_PLACE, FECHA) con su JEFATURA (ya normalizada). [ID] es
+    texto en el origen: lo que no es numerico se descarta, igual que las fotos
+    sin plataforma. Si un par tiene mas de una jefatura se toma la mas
+    frecuente (empate: la primera alfabetica) y se avisa en el log."""
     df = pd.DataFrame(
         {
-            COLUMNA_ID_PLACE: pd.to_numeric(personal_df["ID_PLACE"].astype(str).str.strip(), errors="coerce"),
-            "PERIODO": pd.to_numeric(personal_df["PERIODO"], errors="coerce"),
-            COLUMNA_JEFATURA: personal_df["JEFATURA"].where(personal_df["JEFATURA"].notna()).str.strip(),
+            COLUMNA_ID_PLACE: pd.to_numeric(places_df["ID_PLACE"].astype(str).str.strip(), errors="coerce"),
+            "FECHA": pd.to_datetime(places_df["FECHA"], errors="coerce"),
+            COLUMNA_JEFATURA: places_df["PLATAFORMA"].map(normalizar_plataforma),
         }
     ).dropna()
-    df = df[df[COLUMNA_JEFATURA] != ""].astype({COLUMNA_ID_PLACE: "Int64", "PERIODO": "Int64"})
+    df = df.astype({COLUMNA_ID_PLACE: "Int64"})
 
-    claves = [COLUMNA_ID_PLACE, "PERIODO"]
+    claves = [COLUMNA_ID_PLACE, "FECHA"]
     conteo = df.groupby([*claves, COLUMNA_JEFATURA]).size().reset_index(name="N")
     ambiguos = conteo.groupby(claves).size()
     ambiguos = ambiguos[ambiguos > 1]
     if not ambiguos.empty:
         logger.warning(
-            "  %s par(es) ID_PLACE/periodo con mas de una jefatura en %s; se toma la mas frecuente: %s",
+            "  %s par(es) ID_PLACE/fecha con mas de una jefatura en %s; se toma la mas frecuente: %s",
             len(ambiguos),
-            TABLA_PERSONAL,
-            [(int(i), int(p)) for i, p in ambiguos.index],
+            TABLA_HISTORICO_PLACES,
+            [(int(i), f.date().isoformat()) for i, f in ambiguos.index],
         )
     conteo = conteo.sort_values([*claves, "N", COLUMNA_JEFATURA], ascending=[True, True, False, True])
     return conteo.drop_duplicates(claves)[[*claves, COLUMNA_JEFATURA]].reset_index(drop=True)
 
 
 def agregar_jefatura(silver_df: pd.DataFrame, jefaturas_df: pd.DataFrame) -> pd.DataFrame:
-    """Left join de silver con jefatura_por_place_periodo() por ID_PLACE + mes
-    UTC. No cambia la cantidad de filas (las claves de jefaturas_df son unicas)."""
+    """Cruza silver con jefatura_por_place_fecha() por ID_PLACE + dia UTC: la
+    foto de ese dia o, si no hay, la mas reciente anterior de ese ID
+    (merge_asof 'backward'). No cambia la cantidad ni el orden de las filas."""
     df = silver_df.copy()
-    df["PERIODO"] = periodo_desde_utc(df[COLUMNA_CONTROL_FECHA])
-    df = df.merge(jefaturas_df, how="left", on=[COLUMNA_ID_PLACE, "PERIODO"], validate="many_to_one")
+    df["FECHA"] = fecha_desde_utc(df[COLUMNA_CONTROL_FECHA])
+    df["_FILA"] = range(len(df))
+
+    cruzables = df[df[COLUMNA_ID_PLACE].notna() & df["FECHA"].notna()].copy()
+    cruzables[COLUMNA_ID_PLACE] = cruzables[COLUMNA_ID_PLACE].astype("int64")
+    fotos = jefaturas_df.rename(columns={"FECHA": "FECHA_FOTO"}).copy()
+    fotos[COLUMNA_ID_PLACE] = fotos[COLUMNA_ID_PLACE].astype("int64")
+    fotos["FECHA_FOTO"] = pd.to_datetime(fotos["FECHA_FOTO"]).astype(cruzables["FECHA"].dtype)
+    cruzadas = pd.merge_asof(
+        cruzables[["_FILA", COLUMNA_ID_PLACE, "FECHA"]].sort_values("FECHA"),
+        fotos.sort_values("FECHA_FOTO"),
+        left_on="FECHA",
+        right_on="FECHA_FOTO",
+        by=COLUMNA_ID_PLACE,
+        direction="backward",
+    )
+    df = df.merge(cruzadas[["_FILA", "FECHA_FOTO", COLUMNA_JEFATURA]], how="left", on="_FILA", validate="one_to_one")
+    df = df.sort_values("_FILA").reset_index(drop=True)
     df[COLUMNA_JEFATURA] = df[COLUMNA_JEFATURA].astype(object).where(df[COLUMNA_JEFATURA].notna(), None)
 
+    con_foto_anterior = df[df[COLUMNA_JEFATURA].notna() & (df["FECHA_FOTO"] < df["FECHA"])]
+    if not con_foto_anterior.empty:
+        logger.info(
+            "  %s fila(s) con %s tomada de una foto anterior (sin foto del dia en %s).",
+            len(con_foto_anterior),
+            COLUMNA_JEFATURA,
+            TABLA_HISTORICO_PLACES,
+        )
     sin_jefatura = df[df[COLUMNA_JEFATURA].isna()]
     if not sin_jefatura.empty:
-        pares = sin_jefatura.groupby([COLUMNA_ID_PLACE, "PERIODO"], dropna=False).size()
+        por_place = sin_jefatura.groupby(COLUMNA_ID_PLACE, dropna=False).size()
         logger.warning(
-            "  %s fila(s) sin %s (ID_PLACE/periodo sin fila en %s): %s",
+            "  %s fila(s) sin %s (ID_PLACE sin foto con plataforma en %s hasta la fecha del mensaje): %s",
             len(sin_jefatura),
             COLUMNA_JEFATURA,
-            TABLA_PERSONAL,
-            [(str(i), str(p), int(n)) for (i, p), n in pares.items()],
+            TABLA_HISTORICO_PLACES,
+            [(str(i), int(n)) for i, n in por_place.items()],
         )
-    return df.drop(columns="PERIODO")
+    return df.drop(columns=["FECHA", "_FILA", "FECHA_FOTO"])
+
+
+# Fotos de places para el rango [?, ?] de dias de los mensajes, mas la ultima
+# foto anterior al rango de cada ID (para los que no tengan foto en el rango).
+# Solo fotos con plataforma.
+SELECT_HISTORICO_PLACES = f"""
+SELECT [ID] AS ID_PLACE, [Fecha Impacto] AS FECHA, [Plataforma] AS PLATAFORMA
+FROM {TABLA_HISTORICO_PLACES}
+WHERE [Fecha Impacto] >= ? AND [Fecha Impacto] <= ? AND NULLIF(LTRIM(RTRIM([Plataforma])), '') IS NOT NULL
+UNION ALL
+SELECT ID_PLACE, FECHA, PLATAFORMA FROM (
+    SELECT [ID] AS ID_PLACE, [Fecha Impacto] AS FECHA, [Plataforma] AS PLATAFORMA,
+           ROW_NUMBER() OVER (PARTITION BY [ID] ORDER BY [Fecha Impacto] DESC) AS RN
+    FROM {TABLA_HISTORICO_PLACES}
+    WHERE [Fecha Impacto] < ? AND NULLIF(LTRIM(RTRIM([Plataforma])), '') IS NOT NULL
+) anteriores
+WHERE RN = 1
+"""
 
 
 def _con_jefatura(gateway, silver_df: pd.DataFrame) -> pd.DataFrame:
-    """Lee de TABLA_PERSONAL solo los meses presentes en silver_df y cruza."""
-    periodos = sorted(int(p) for p in periodo_desde_utc(silver_df[COLUMNA_CONTROL_FECHA]).dropna().unique())
-    if not periodos:
+    """Lee de TABLA_HISTORICO_PLACES solo los dias presentes en silver_df (mas
+    la ultima foto anterior de cada ID) y cruza."""
+    fechas = fecha_desde_utc(silver_df[COLUMNA_CONTROL_FECHA]).dropna()
+    if fechas.empty:
         return silver_df.assign(**{COLUMNA_JEFATURA: None})
-    placeholders = ", ".join("?" for _ in periodos)
-    personal_df = gateway.fetch_dataframe(
-        f"SELECT [ID Place] AS ID_PLACE, [Periodo] AS PERIODO, [Jefatura] AS JEFATURA FROM {TABLA_PERSONAL} "
-        f"WHERE [Periodo] IN ({placeholders}) AND [Jefatura] IS NOT NULL",
-        periodos,
-    )
-    logger.info("%s fila(s) leidas de %s para los periodos %s.", len(personal_df), TABLA_PERSONAL, periodos)
-    if personal_df.empty:
-        personal_df = pd.DataFrame(columns=["ID_PLACE", "PERIODO", "JEFATURA"])
-    df = agregar_jefatura(silver_df, jefatura_por_place_periodo(personal_df))
+    desde, hasta = fechas.min().date(), fechas.max().date()
+    places_df = gateway.fetch_dataframe(SELECT_HISTORICO_PLACES, (desde, hasta, desde))
+    logger.info("%s fila(s) leidas de %s para los dias %s a %s.", len(places_df), TABLA_HISTORICO_PLACES, desde, hasta)
+    if places_df.empty:
+        places_df = pd.DataFrame(columns=["ID_PLACE", "FECHA", "PLATAFORMA"])
+    df = agregar_jefatura(silver_df, jefatura_por_place_fecha(places_df))
     for jefatura, cantidad in df[COLUMNA_JEFATURA].fillna("(sin jefatura)").value_counts().items():
         logger.info("  %s = %s: %s fila(s)", COLUMNA_JEFATURA, jefatura, cantidad)
     return df

@@ -4,7 +4,7 @@ y completa)."""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 import pandas as pd
 import pytest
@@ -18,16 +18,17 @@ from silver.cargar import (
     cargar_periodo_silver,
     coordinador_desde_origen,
     agregar_jefatura,
+    fecha_desde_utc,
     id_place_desde_bandeja,
-    jefatura_por_place_periodo,
-    periodo_desde_utc,
+    jefatura_por_place_fecha,
+    normalizar_plataforma,
     recargar_silver_completo,
 )
 from silver.mappings import (
     COLUMNAS_EXCLUIDAS_SILVER,
     SEPARADOR_CASOS,
     TABLA_BANDEJAS_SILVER,
-    TABLA_PERSONAL,
+    TABLA_HISTORICO_PLACES,
     TABLA_REGISTRO_SILVER,
     TABLA_SEGUIMIENTO,
 )
@@ -113,13 +114,15 @@ def _bronze_df() -> pd.DataFrame:
     )
 
 
-def _personal_df() -> pd.DataFrame:
-    return pd.DataFrame({"ID_PLACE": ["51030068", "-"], "PERIODO": [202609, 202609], "JEFATURA": ["Triadas", "SOC"]})
+def _places_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        {"ID_PLACE": ["51030068", "-"], "FECHA": [date(2026, 9, 5), date(2026, 9, 5)], "PLATAFORMA": ["Triada masivo", "SOC"]}
+    )
 
 
 def test_cargar_periodo_silver_lee_bronze_y_reemplaza_el_periodo():
     gateway = FakeDatabaseGateway()
-    gateway.resultados_select = [_bronze_df(), _personal_df()]
+    gateway.resultados_select = [_bronze_df(), _places_df()]
     gateway.filas_a_eliminar = 5
     fecha_inicio, fecha_fin = datetime(2026, 9, 1), datetime(2026, 10, 1)
 
@@ -132,10 +135,11 @@ def test_cargar_periodo_silver_lee_bronze_y_reemplaza_el_periodo():
     for columna in COLUMNAS_EXCLUIDAS_SILVER:
         assert f"[{columna}]" not in sql_select
 
-    # Base de personal: solo los meses presentes en lo leido de bronze.
-    sql_personal, params_personal = gateway.selects[1]
-    assert TABLA_PERSONAL in sql_personal
-    assert params_personal == (202609,)
+    # Historico de places: solo los dias presentes en lo leido de bronze
+    # (desde, hasta) + la ultima foto anterior a 'desde'.
+    sql_places, params_places = gateway.selects[1]
+    assert TABLA_HISTORICO_PLACES in sql_places
+    assert params_places == (date(2026, 9, 5), date(2026, 9, 6), date(2026, 9, 5))
 
     sql_delete, params_delete = gateway.deletes[0]
     assert TABLA_REGISTRO_SILVER in sql_delete
@@ -146,7 +150,7 @@ def test_cargar_periodo_silver_lee_bronze_y_reemplaza_el_periodo():
     assert list(insertado["COORDINADOR"]) == ["JHON MORALES PENA", None]
     assert insertado["ID_PLACE"].tolist() == [51030068, pd.NA]
     assert list(insertado["JEFATURA"]) == ["Triadas", None]
-    assert "PERIODO" not in insertado.columns
+    assert not {"FECHA", "FECHA_FOTO", "_FILA"} & set(insertado.columns)
     assert (eliminadas, insertadas) == (5, 2)
 
     # NUMERO_CASO: despues del insert, UPDATE sobre toda silver (sin periodo).
@@ -157,7 +161,7 @@ def test_cargar_periodo_silver_lee_bronze_y_reemplaza_el_periodo():
 
 def test_recargar_silver_completo_trunca_y_lee_todo_bronze():
     gateway = FakeDatabaseGateway()
-    gateway.resultados_select = [_bronze_df(), _personal_df()]
+    gateway.resultados_select = [_bronze_df(), _places_df()]
 
     insertadas = recargar_silver_completo(gateway)
 
@@ -233,48 +237,77 @@ def test_id_place_desde_bandeja(bandeja, esperado):
     assert id_place_desde_bandeja(bandeja) == esperado
 
 
-def test_periodo_desde_utc_usa_el_mes_utc():
+def test_fecha_desde_utc_usa_el_dia_utc():
     fechas = pd.Series([datetime(2026, 9, 30, 23, 10), datetime(2026, 10, 1, 0, 30), None])
-    assert periodo_desde_utc(fechas).tolist() == [202609, 202610, pd.NA]
+    assert fecha_desde_utc(fechas).tolist() == [pd.Timestamp(2026, 9, 30), pd.Timestamp(2026, 10, 1), pd.NaT]
 
 
-def test_jefatura_por_place_periodo_descarta_no_numericos_y_desempata():
-    personal = pd.DataFrame(
+@pytest.mark.parametrize(
+    ("plataforma", "esperado"),
+    [
+        ("Triada masivo", "Triadas"),
+        ("Triada alto valor", "Triadas"),
+        ("Triada_micro", "Triadas"),
+        ("TRIADAS", "Triadas"),
+        ("CARTERIZADOS", "Carterizados"),
+        (" USUARIOS ", "Usuarios"),
+        ("Crosselling Chile", "Crosselling Chile"),  # no viene en mayusculas: tal cual
+        ("", None),
+        (None, None),
+        (float("nan"), None),
+    ],
+)
+def test_normalizar_plataforma(plataforma, esperado):
+    assert normalizar_plataforma(plataforma) == esperado
+
+
+def test_jefatura_por_place_fecha_descarta_no_numericos_y_desempata():
+    dia = date(2026, 9, 5)
+    places = pd.DataFrame(
         {
             "ID_PLACE": ["51030068", " 51030068 ", "51030068", "-", "51030069", "51030070", "51030071", "51030071"],
-            "PERIODO": [202609, 202609, 202609, 202609, 202609, 202609, 202609, 202609],
-            "JEFATURA": ["Triadas", "Triadas", "Carterizados", "SOC", "Carterizados", None, "B", "A"],
+            "FECHA": [dia] * 8,
+            "PLATAFORMA": ["Triada masivo", "Triada_micro", "CARTERIZADOS", "SOC", "CARTERIZADOS", None, "B", "A"],
         }
     )
 
-    resultado = jefatura_por_place_periodo(personal)
+    resultado = jefatura_por_place_fecha(places)
 
     por_place = dict(zip(resultado["ID_PLACE"].tolist(), resultado["JEFATURA"]))
-    # 51030068: la mas frecuente; 51030071: empate -> primera alfabetica;
-    # '-' y la jefatura NULL se descartan.
+    # 51030068: la mas frecuente (las dos Triada* -> Triadas); 51030071: empate
+    # -> primera alfabetica; '-' y la plataforma NULL se descartan.
     assert por_place == {51030068: "Triadas", 51030069: "Carterizados", 51030071: "A"}
 
 
-def test_agregar_jefatura_cruza_por_place_y_mes_sin_duplicar_filas():
+def test_agregar_jefatura_usa_la_foto_del_dia_o_la_anterior_sin_duplicar_filas():
     silver = pd.DataFrame(
         {
-            "ID_PLACE": pd.array([51030068, 51030068, 51030069, None], dtype="Int64"),
+            "ID_PLACE": pd.array([51030165, 51030165, 51030165, 51030069, 51030070, None], dtype="Int64"),
             "FechaHora_UTC_Texto": [
-                datetime(2026, 9, 30, 23, 0),
-                datetime(2026, 10, 1, 1, 0),  # otro mes UTC: sin fila en personal
-                datetime(2026, 9, 5),
-                datetime(2026, 9, 5),
+                datetime(2026, 9, 30, 23, 0),  # foto del dia 30-09
+                datetime(2026, 10, 1, 1, 0),  # dia UTC 01-10: foto del dia
+                datetime(2026, 10, 3, 1, 0),  # sin foto del 03-10: la anterior (01-10)
+                datetime(2026, 9, 5),  # sin ninguna foto anterior
+                datetime(2026, 9, 5),  # place sin fotos
+                datetime(2026, 9, 5),  # sin ID_PLACE
             ],
         }
     )
-    jefaturas = jefatura_por_place_periodo(
-        pd.DataFrame({"ID_PLACE": ["51030068", "51030069"], "PERIODO": [202609, 202609], "JEFATURA": ["Triadas", "Carterizados"]})
+    jefaturas = jefatura_por_place_fecha(
+        pd.DataFrame(
+            {
+                "ID_PLACE": ["51030165", "51030165", "51030069"],
+                "FECHA": [date(2026, 9, 30), date(2026, 10, 1), date(2026, 9, 6)],
+                "PLATAFORMA": ["CARTERIZADOS", "Triada masivo", "USUARIOS"],
+            }
+        )
     )
 
     resultado = agregar_jefatura(silver, jefaturas)
 
-    assert len(resultado) == 4
-    assert list(resultado["JEFATURA"]) == ["Triadas", None, "Carterizados", None]
+    assert len(resultado) == 6
+    assert list(resultado["JEFATURA"]) == ["Carterizados", "Triadas", "Triadas", None, None, None]
+    assert list(resultado.columns) == ["ID_PLACE", "FechaHora_UTC_Texto", "JEFATURA"]
 
 
 def test_actualizar_numero_caso_cruza_conversation_id_sobre_toda_silver():
