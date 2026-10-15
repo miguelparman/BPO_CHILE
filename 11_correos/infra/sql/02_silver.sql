@@ -22,7 +22,7 @@ BEGIN
         ConversationID                    NVARCHAR(200)  NULL,
         Asesor                            NVARCHAR(200)  NULL,
         ORIGEN                            NVARCHAR(400)  NULL,
-        ASUNTO_AGRUPADO                   NVARCHAR(50)   NULL,  -- REBOTE / PRESENTACIÓN / PRUEBA / PROMO; NULL si ninguna regla calza (ver silver/mappings.REGLAS_ASUNTO_AGRUPADO)
+        ASUNTO_AGRUPADO                   NVARCHAR(50)   NULL,  -- SEGUIMIENTO COBRANZA / REBOTE / SEGUIMIENTO TÉCNICA / SEGUIMIENTO VENTAS / SEGUIMIENTO REMEDY / PRESENTACIÓN / PRUEBA / PROMO; NULL si ninguna regla calza (ver silver/mappings.REGLAS_ASUNTO_AGRUPADO)
         COORDINADOR                       NVARCHAR(400)  NULL,  -- ORIGEN sin 'Registro_' ni extension, '_' -> ' ' (ver silver/cargar.coordinador_desde_origen)
         ID_PLACE                          INT            NULL,  -- 'SM<n>@movistar.cl' -> 51030000 + n (ver silver/cargar.id_place_desde_bandeja)
         JEFATURA                          NVARCHAR(50)   NULL,  -- [CL_DATA].[dbo].[TBL_HISTORICO_PLACES].[Plataforma] por ID_PLACE + dia UTC o foto anterior (ver silver/cargar.agregar_jefatura)

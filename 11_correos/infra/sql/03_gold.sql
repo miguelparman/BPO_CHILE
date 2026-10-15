@@ -6,7 +6,7 @@
 --   gold.DIM_FECHA             calendario (fecha LOCAL Peru/Bogota)
 --   gold.DIM_BANDEJA           bandeja + ID Place + asesor + coordinador (1:1 bandeja-asesor)
 --   gold.DIM_TIPO              Entrada / Salida
---   gold.DIM_ASUNTO_AGRUPADO   REBOTE / PRESENTACIÓN / PRUEBA / PROMO
+--   gold.DIM_ASUNTO_AGRUPADO   SEGUIMIENTO COBRANZA / REBOTE / SEGUIMIENTO TÉCNICA / SEGUIMIENTO VENTAS / SEGUIMIENTO REMEDY / PRESENTACIÓN / PRUEBA / PROMO
 --   gold.DIM_JEFATURA          jefatura (plataforma) del place en el dia del mensaje (Triadas, Carterizados, ...)
 --
 -- Cada dimension (salvo DIM_FECHA) tiene un miembro de clave 0 con

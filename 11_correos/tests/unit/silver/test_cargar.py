@@ -31,6 +31,7 @@ from silver.mappings import (
     TABLA_HISTORICO_PLACES,
     TABLA_REGISTRO_SILVER,
     TABLA_SEGUIMIENTO,
+    TIPO_CASO_SEGUIMIENTO,
 )
 from tests.unit.fakes import FakeDatabaseGateway
 
@@ -88,6 +89,19 @@ def test_agrupar_asunto(asunto, esperado):
         ("[REF:11506148]Actividad Remedy[ID:REQ000000703338]", "x@y.cl", "Entrada", "SEGUIMIENTO REMEDY"),
         ("RE: Actividad Remedy REQ000000701441 CLIENTE INGRESO BAJA PO", "x@y.cl", "Salida", "SEGUIMIENTO REMEDY"),
         ("RE: CREACION DE CLIENTE EN REMEDY", "x@y.cl", "Entrada", None),
+        # SEGUIMIENTO COBRANZA: 'Contacto' CONTIENE la casilla, Entrada y Salida,
+        # y gana incluso sobre REBOTE
+        ("Consulta", "cobranzas@emailmovistar.cl", "Entrada", "SEGUIMIENTO COBRANZA"),
+        ("Consulta", "cobranzas@emailmovistar.cl", "Salida", "SEGUIMIENTO COBRANZA"),
+        ("Consulta", "COBRANZAS@EmailMovistar.CL", None, "SEGUIMIENTO COBRANZA"),
+        ("Consulta", "SM52@movistar.cl; cobranzas@emailmovistar.cl", "Entrada", "SEGUIMIENTO COBRANZA"),
+        ("Consulta", "otro.cobranzas@emailmovistar.cl", "Entrada", "SEGUIMIENTO COBRANZA"),
+        ("Consulta", "Cobranzas <cobranzas@emailmovistar.cl>", "Entrada", "SEGUIMIENTO COBRANZA"),
+        ("Delivery Status Notification (Failure)", "cobranzas@emailmovistar.cl", "Entrada", "SEGUIMIENTO COBRANZA"),
+        ("Correo de prueba", "cobranzas@emailmovistar.cl", "Entrada", "SEGUIMIENTO COBRANZA"),
+        ("Consulta", "cobranzas@movistar.cl", "Entrada", None),
+        # las reglas de contacto sin contiene=True siguen exigiendo igualdad
+        ("Consulta", "x.seguimiento.moviles@movistar.cl.y", "Entrada", None),
         (None, None, None, None),
     ],
 )
@@ -320,6 +334,11 @@ def test_actualizar_numero_caso_cruza_conversation_id_sobre_toda_silver():
     assert "LEFT JOIN casos" in sql
     # Sin filtro de periodo: toda la tabla, en cada corrida.
     assert "?" not in sql
+
+
+def test_actualizar_numero_caso_solo_trae_casos_comercial_ii():
+    assert TIPO_CASO_SEGUIMIENTO == "Caso Comercial II"
+    assert f"AND t.[Tipo del caso] = '{TIPO_CASO_SEGUIMIENTO}'" in ACTUALIZAR_NUMERO_CASO
 
 
 def test_actualizar_numero_caso_devuelve_filas_cambiadas():

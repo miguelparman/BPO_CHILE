@@ -49,10 +49,12 @@ from silver.mappings import (
     PATRON_BANDEJA_ID_PLACE,
     REGLAS_ASUNTO_AGRUPADO,
     SEPARADOR_CASOS,
+    ReglaAgrupacion,
     TABLA_BANDEJAS_SILVER,
     TABLA_HISTORICO_PLACES,
     TABLA_REGISTRO_SILVER,
     TABLA_SEGUIMIENTO,
+    TIPO_CASO_SEGUIMIENTO,
 )
 
 _PREFIJO_ORIGEN = "registro_"
@@ -85,12 +87,18 @@ def _correos(contacto: object) -> set[str]:
     return {_normalizar(c.strip()) for c in contacto.split(";") if c.strip()}
 
 
-# Por regla: patron del asunto (CAMPO_ASUNTO) o conjunto de correos (CAMPO_CONTACTO).
+def _usa_patron(regla: ReglaAgrupacion) -> bool:
+    """Reglas que buscan texto (asunto, o contacto con contiene=True)."""
+    return regla.campo == CAMPO_ASUNTO or regla.contiene
+
+
+# Por regla: patron de texto (asunto, o contacto con contiene=True) o
+# conjunto de correos (contacto exacto).
 _REGLAS_COMPILADAS = [
     (
         regla,
-        _patron(regla.textos, regla.palabra_completa) if regla.campo == CAMPO_ASUNTO else None,
-        {_normalizar(t) for t in regla.textos} if regla.campo == CAMPO_CONTACTO else None,
+        _patron(regla.textos, regla.palabra_completa) if _usa_patron(regla) else None,
+        {_normalizar(t) for t in regla.textos} if not _usa_patron(regla) else None,
     )
     for regla in REGLAS_ASUNTO_AGRUPADO
 ]
@@ -99,12 +107,16 @@ _REGLAS_COMPILADAS = [
 def agrupar_asunto(asunto: object, contacto: object = None, tipo: object = None) -> str | None:
     """Devuelve el grupo de la primera regla que calza con el mensaje (asunto,
     contacto y tipo), o None si ninguna calza."""
-    asunto_normalizado = _normalizar(asunto) if isinstance(asunto, str) and asunto.strip() else None
+    textos = {
+        CAMPO_ASUNTO: _normalizar(asunto) if isinstance(asunto, str) and asunto.strip() else None,
+        CAMPO_CONTACTO: _normalizar(contacto) if isinstance(contacto, str) and contacto.strip() else None,
+    }
     correos = _correos(contacto)
     for regla, patron, correos_regla in _REGLAS_COMPILADAS:
         if regla.tipo is not None and tipo != regla.tipo:
             continue
-        if patron is not None and asunto_normalizado is not None and patron.search(asunto_normalizado):
+        texto = textos[regla.campo]
+        if patron is not None and texto is not None and patron.search(texto):
             return regla.grupo
         if correos_regla is not None and correos & correos_regla:
             return regla.grupo
@@ -296,7 +308,8 @@ def _con_jefatura(gateway, silver_df: pd.DataFrame) -> pd.DataFrame:
 # Casos por ConversationID: [To Addres] normalizado (sin espacios, en
 # mayusculas) = ConversationID normalizado. Solo se consideran los [To Addres]
 # con forma de ConversationID (32 caracteres hexadecimales): el resto son
-# correos y nunca calzan. Todos los casos de la conversacion, por apertura.
+# correos y nunca calzan. Solo casos de tipo TIPO_CASO_SEGUIMIENTO. Todos
+# los casos de la conversacion, por apertura.
 # Solo actualiza las filas cuyo valor cambia (incluye volver a NULL).
 ACTUALIZAR_NUMERO_CASO = f"""
 WITH casos AS (
@@ -308,6 +321,7 @@ WITH casos AS (
     WHERE LEN(LTRIM(RTRIM(t.[To Addres]))) = 32
       AND LTRIM(RTRIM(t.[To Addres])) NOT LIKE '%[^0-9A-Fa-f]%'
       AND t.[Número del caso] IS NOT NULL
+      AND t.[Tipo del caso] = '{TIPO_CASO_SEGUIMIENTO}'
     GROUP BY UPPER(LTRIM(RTRIM(t.[To Addres])))
 )
 UPDATE s SET s.[{COLUMNA_NUMERO_CASO}] = c.{COLUMNA_NUMERO_CASO}

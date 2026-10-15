@@ -117,23 +117,40 @@ mismo periodo que bronze (`DELETE` + `INSERT` del rango), o completa con
 `python main.py --solo silver --completo` (hay que hacerlo tras cambiar las
 reglas, para recalcular lo ya cargado).
 
-`ASUNTO_AGRUPADO` sale de `Asunto` con estas reglas
+`ASUNTO_AGRUPADO` sale de `Asunto`, `Contacto` y `Tipo` con estas reglas
 (`silver/mappings.py`, `REGLAS_ASUNTO_AGRUPADO`), **en orden**, gana la
 primera que calza, sin distinguir mayúsculas ni tildes:
 
-1. **REBOTE**: contiene `delivery status notification`, `notificacion de estado de entrega`,
-   `no entregable:` o `undelivered mail returned to sender`. Va primero porque un rebote
-   cita el asunto original (`No entregable: Actualización de correo de contacto…`).
-2. **PRESENTACIÓN**: contiene `actualizacion de correo de contacto` o `presentacion`
+1. **SEGUIMIENTO COBRANZA**: `Contacto` **contiene** `cobranzas@emailmovistar.cl`
+   (Entrada y Salida). Va antes que REBOTE: todo mensaje con esa casilla cuenta
+   como cobranza, sea cual sea el asunto.
+2. **REBOTE**: `Asunto` contiene `delivery status notification`, `notificacion de estado de entrega`,
+   `no entregable:` o `undelivered mail returned to sender`. Va antes que las reglas de asunto
+   porque un rebote cita el asunto original (`No entregable: Actualización de correo de contacto…`).
+3. **SEGUIMIENTO TÉCNICA**: mensaje de **Entrada** y alguno de los correos de `Contacto`
+   es **igual** a `seguimiento.moviles@movistar.cl`.
+4. **SEGUIMIENTO VENTAS**: mensaje de **Entrada** y alguno de los correos de `Contacto`
+   es **igual** a uno de `CORREOS_SEGUIMIENTO_VENTAS`.
+5. **SEGUIMIENTO REMEDY**: `Asunto` contiene `actividad remedy`.
+6. **PRESENTACIÓN**: `Asunto` contiene `actualizacion de correo de contacto` o `presentacion`
    como **palabra completa** (`representación` o `presentaciones` no cuentan).
-3. **PRUEBA**: contiene `prueba`.
-4. **PROMO**: contiene `promo` (cubre `PROMOSEPTIEMBRE`, `PROMOSETIEMBRE`, `PROMO SEPTIEMBRE`, `PROMOCIONES`…).
+7. **PRUEBA**: `Asunto` contiene `prueba`.
+8. **PROMO**: `Asunto` contiene `promo` (cubre `PROMOSEPTIEMBRE`, `PROMOSETIEMBRE`, `PROMO SEPTIEMBRE`, `PROMOCIONES`…).
 
 Si no calza ninguna, queda `NULL`.
 
 `COORDINADOR` sale de `ORIGEN` (cada `.xlsx` es el control de un
 coordinador): sin el prefijo `Registro_`, sin extensión y con `_` → espacio
 (`Registro_JHON_MORALES_PENA.xlsx` → `JHON MORALES PENA`).
+
+`NUMERO_CASO` cruza `ConversationID` con `[To Addres]` (sin espacios, en
+mayúsculas) de `[CL_SEGUIMIENTO_ACTUAL].[dbo].[TBL_SEGUIMIENTO]`, **solo**
+casos con `[Tipo del caso] = 'Caso Comercial II'` (`silver/mappings.TIPO_CASO_SEGUIMIENTO`)
+y `[To Addres]` con forma de ConversationID (32 caracteres hexadecimales).
+Si la conversación tiene varios casos van todos, por apertura, separados por
+`; `; sin caso = `NULL`. Es un `UPDATE` sobre **toda** la tabla silver en cada
+corrida (un caso suele abrirse después del correo), replicado a
+`gold.FACT_MENSAJE` en todos los periodos.
 
 `TBL_CORREO_BANDEJAS_SILVER` se reemplaza **completa** en cada corrida de
 silver (con o sin `--completo`), igual que `TBL_CORREO_BANDEJAS` en bronze:

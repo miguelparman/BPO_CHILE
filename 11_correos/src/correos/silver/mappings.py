@@ -38,7 +38,8 @@ JEFATURA_TRIADAS = "Triadas"
 
 # Numero(s) de caso de la conversacion, cruzando ConversationID con
 # [To Addres] de la base de seguimiento (hoy casi siempre trae correos; solo
-# los casos recientes traen ahi el ConversationID). Si una conversacion tiene
+# los casos recientes traen ahi el ConversationID). Solo casos con
+# [Tipo del caso] = TIPO_CASO_SEGUIMIENTO. Si una conversacion tiene
 # varios casos van TODOS, ordenados por apertura y separados por
 # SEPARADOR_CASOS. Sin caso = NULL. No se calcula en Python: es un UPDATE
 # sobre TODA la tabla silver en cada corrida (ver
@@ -46,6 +47,7 @@ JEFATURA_TRIADAS = "Triadas"
 # llega aunque su periodo ya no se recargue.
 COLUMNA_NUMERO_CASO = "NUMERO_CASO"
 TABLA_SEGUIMIENTO = "[CL_SEGUIMIENTO_ACTUAL].[dbo].[TBL_SEGUIMIENTO]"
+TIPO_CASO_SEGUIMIENTO = "Caso Comercial II"
 SEPARADOR_CASOS = "; "
 
 # Mismo campo de control de periodo que bronze (silver conserva el nombre):
@@ -83,6 +85,9 @@ class ReglaAgrupacion(NamedTuple):
     textos: list[str]
     # Solo CAMPO_ASUNTO: True = el texto debe aparecer como palabra(s) completa(s).
     palabra_completa: bool = False
+    # Solo CAMPO_CONTACTO: True = basta que 'Contacto' contenga el texto; False =
+    # alguno de sus correos debe ser igual al texto.
+    contiene: bool = False
     # Si se indica, la regla solo aplica a mensajes de ese 'Tipo' ('Entrada'/'Salida').
     tipo: str | None = None
 
@@ -107,12 +112,16 @@ CORREOS_SEGUIMIENTO_VENTAS = [
 #   -- ej. 'presentacion' NO calza dentro de 'representacion'; con False basta
 #   que aparezca en cualquier parte.
 # - CAMPO_CONTACTO: alguno de los correos de 'Contacto' (puede traer varios
-#   separados por ';') es igual a uno de los textos.
-# REBOTE va primero: un rebote puede citar el asunto original (ej. 'No
+#   separados por ';') es igual a uno de los textos; con contiene=True basta
+#   que 'Contacto' contenga el texto en cualquier parte.
+# SEGUIMIENTO COBRANZA va primero, incluso antes que REBOTE: todo mensaje con
+# esa casilla en 'Contacto' cuenta como cobranza, sea cual sea el asunto.
+# REBOTE va despues: un rebote puede citar el asunto original (ej. 'No
 # entregable: Actualizacion de correo de contacto ...') y debe contarse como
 # rebote, no como PRESENTACION. Las reglas por remitente van antes que las
 # de asunto: quien envia es mas confiable que el texto del asunto.
 REGLAS_ASUNTO_AGRUPADO: list[ReglaAgrupacion] = [
+    ReglaAgrupacion("SEGUIMIENTO COBRANZA", CAMPO_CONTACTO, ["cobranzas@emailmovistar.cl"], contiene=True),
     ReglaAgrupacion(
         "REBOTE",
         CAMPO_ASUNTO,
