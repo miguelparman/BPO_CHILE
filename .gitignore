@@ -7,3 +7,5 @@ Basurero/
 *.env
 *.log
 Migrar/
+
+~$*
