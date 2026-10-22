@@ -54,6 +54,10 @@ class Settings:
     csv_salesforce_encoding: str = os.getenv("CSV_SALESFORCE_ENCODING", "latin-1")
     csv_salesforce_delimiter: str = os.getenv("CSV_SALESFORCE_DELIMITER", ",")
 
+    # --- Validación de conexiones antes de ejecutar (conexiones.py) ---
+    reintentos_conexion: int = int(os.getenv("REINTENTOS_CONEXION") or 3)
+    espera_reintento_s: int = int(os.getenv("ESPERA_REINTENTO_S") or 300)
+
     # --- Parámetros del proceso (reemplaza User::Periodo, User::Fecha_inicio, User::Fecha_fin) ---
     periodo: int = int(os.getenv("PERIODO", date.today().strftime("%Y%m")))
     fecha_inicio: str = os.getenv("FECHA_INICIO", date.today().replace(day=1).isoformat())

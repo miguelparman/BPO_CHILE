@@ -13,6 +13,7 @@ Arquitectura (src layout, modular por componentes):
     pipeline.py                      Orquestador: el Control Flow del .dtsx.
     sql.py, scripts_sql/             Execute SQL Task (T-SQL parametrizado).
     db.py, config.py                 Conexión SQL Server y configuración vía '.env'.
+    conexiones.py                    Validación previa de SQL Server y SharePoint con reintento (5 min x 3).
     sharepoint/                      Cliente Microsoft Graph (mismo de 15_Logueo).
     main.py (este archivo)           Composition root.
 
@@ -36,6 +37,7 @@ sys.path.insert(0, str(BASE_DIR / "src" / "termometro"))  # permite 'import conf
 
 from config import settings  # noqa: E402
 import pipeline  # noqa: E402
+from conexiones import Verificacion, probar_sql, validar_conexiones  # noqa: E402
 from extraccion.fuentes import Fuente, FuenteLocal, FuenteSharePoint  # noqa: E402
 from sharepoint.auth import get_graph_token  # noqa: E402
 from sharepoint.client import SharePointClient  # noqa: E402
@@ -94,6 +96,21 @@ def main() -> int:
     logger.info("Iniciando ETL Termómetro | periodo=%s rango=%s..%s", args.periodo, args.fecha_inicio, args.fecha_fin)
 
     try:
+        verificaciones = [
+            Verificacion(
+                f"SQL Server {settings.db_database} + {settings.db_cartera_database} ({settings.db_server})",
+                lambda: probar_sql(settings.db_cartera_database),
+            )
+        ]
+        if not (args.excel_local and args.csv_local):
+            verificaciones.append(
+                Verificacion(
+                    f"SharePoint {settings.sharepoint_site_path} / {settings.sharepoint_drive_name}",
+                    lambda: crear_fuentes(args),
+                )
+            )
+        validar_conexiones(verificaciones, settings.reintentos_conexion, settings.espera_reintento_s)
+
         fuente_excel, fuente_csv = crear_fuentes(args)
         pipeline.run(args.periodo, args.fecha_inicio, args.fecha_fin, fuente_excel, fuente_csv)
     except Exception:
