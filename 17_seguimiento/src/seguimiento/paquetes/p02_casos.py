@@ -23,7 +23,7 @@ Python (7 tareas, mismo resultado):
   -> Log Fin
 
 Bloques (frescura): 'Casos' (Casos + Nombre Contacto) y 'Casos B' (Casos B)
-se omiten por separado si su archivo esta viejo o a medio publicar.
+se omiten por separado si su archivo no esta actualizado o viene vacio.
 """
 
 from __future__ import annotations

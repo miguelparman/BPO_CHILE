@@ -38,8 +38,8 @@ después de cada publicación de `201_bot_salesforce`.
 Antes de cargar:
 1. **Conexiones:** SQL Server `172.17.0.162` y SharePoint, con sus archivos. Si alguna falla, se reintenta cada 5 min
    hasta 3 veces y luego termina con exit 1 sin ejecutar nada.
-2. **Frescura de los archivos** (`frescura.py`): un archivo con más de `FRESCURA_MAX_MIN` (150) minutos, a medio
-   publicar por el bot (se espera 5 min × 3) o sin filas **no se carga**. Se omiten solo los bloques de tareas que lo
+2. **Frescura de los archivos** (`frescura.py`): un archivo no actualizado (más de `FRESCURA_MAX_MIN` = 150 minutos) o
+   sin filas **no se carga**. Si el bot está publicando, no se espera: se toma lo que haya. Se omiten solo los bloques de tareas que lo
    usan (`paquetes/pXX_*.py`, `bloques=`) y la corrida continua con los demás. Si se omiten todos los bloques de un
    paquete, no se escriben sus Log Inicio/Fin en `LOGS_PROCESOS`. El paquete 07 (SP) corre siempre. Cada omisión
    queda como advertencia en el log.

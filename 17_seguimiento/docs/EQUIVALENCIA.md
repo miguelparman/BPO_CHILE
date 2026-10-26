@@ -200,9 +200,9 @@ archivos en SharePoint (fecha y tamaño, sin descargarlos) antes de cargar:
 
 | Situación | Regla | Acción |
 |---|---|---|
-| Viejo | Más de `FRESCURA_MAX_MIN` = **150** min (tolera que se pierda una publicación del bot; lo normal son ~30 min) | Se omite |
-| El bot está publicando | Modificado hace menos de 10 min, o más de 15 min antes que el archivo más nuevo (versión anterior) | Espera 5 min y revisa de nuevo (× 3); si persiste, se omite |
+| No actualizado | Más de `FRESCURA_MAX_MIN` = **150** min (tolera que se pierda una publicación del bot; lo normal son ~30 min) | Se omite |
 | Vacío | 0 bytes, o sin filas de datos al descargarlo | Se omite |
+| El bot está publicando en ese momento, o hay archivos de publicaciones distintas | — | **No se espera**: se toma lo que haya si está dentro de los 150 min (decisión del usuario). SharePoint reemplaza el archivo completo al terminar de subirlo, así que nunca se lee uno a medio escribir. |
 
 **Decisión del usuario: omitir esa carga y continuar con las demás.** Se omite solo el bloque de tareas que usa el
 archivo (`paquetes/base.Bloque`):

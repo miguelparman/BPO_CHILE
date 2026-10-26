@@ -63,7 +63,7 @@ from config import cargar_configuracion  # noqa: E402
 from db import DatabaseGateway, crear_conexion  # noqa: E402
 from exceptions import ConexionError, PipelineError, SeguimientoError  # noqa: E402
 from extraccion.extractor import FuenteArchivo, FuenteLocal, FuenteSharePoint  # noqa: E402
-from frescura import ReglasFrescura, estados_sharepoint, revisar  # noqa: E402
+from frescura import estados_sharepoint, revisar  # noqa: E402
 from logging_setup import NOMBRE_LOGGER, configurar_logging  # noqa: E402
 from paquetes import CODIGOS, archivos_de, seleccionar  # noqa: E402
 from pipeline import SeguimientoPipeline  # noqa: E402
@@ -89,16 +89,13 @@ def crear_fuente_sharepoint(settings) -> FuenteSharePoint:
 
 
 def revisar_frescura(settings, fuente: FuenteSharePoint, paquetes) -> dict:
-    """Archivos que no se cargan (viejos, a medio publicar o vacios) -> motivo."""
+    """Archivos que no se cargan (no actualizados o vacios) -> motivo."""
     archivos = archivos_de(paquetes)
     if not archivos:
         return {}
-    reglas = ReglasFrescura(settings.frescura_max_min, settings.frescura_ventana_min, settings.frescura_reciente_min)
     return revisar(
         lambda: estados_sharepoint(fuente.cliente, fuente.drive_id, settings.sharepoint.carpetas, archivos),
-        reglas,
-        reintentos=settings.reintentos_conexion,
-        espera_s=settings.espera_reintento_s,
+        settings.frescura_max_min,
     )
 
 

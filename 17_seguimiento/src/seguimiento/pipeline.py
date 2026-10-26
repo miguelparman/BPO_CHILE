@@ -9,7 +9,7 @@ Reglas (decision del usuario):
     queda en 'exec...', como en SSIS) ni los paquetes siguientes.
   - Excepcion: 'Carga Descripciones NC' (06) registra su error como
     advertencia y el paquete continua (asi se comporta hoy en SSIS).
-  - Frescura (frescura.py): un archivo viejo, a medio publicar o sin filas
+  - Frescura (frescura.py): un archivo no actualizado o sin filas
     no se carga; se omiten solo los bloques que lo usan (paquetes/base.Bloque)
     como advertencia, y la corrida continua. Si se omiten todos los bloques
     de un paquete, el paquete completo se omite (sin Log Inicio/Fin). El 07

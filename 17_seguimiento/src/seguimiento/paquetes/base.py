@@ -54,8 +54,8 @@ Tarea = TareaSql | TareaTransaccion | TareaDataFlow | TareaDescripcionesNC
 
 @dataclass(frozen=True)
 class Bloque:
-    """Tareas que dependen de unos archivos: si alguno esta viejo, a medio
-    publicar o vacio (frescura.py), se omite el bloque COMPLETO y el resto
+    """Tareas que dependen de unos archivos: si alguno no esta actualizado o
+    viene vacio (frescura.py), se omite el bloque COMPLETO y el resto
     del paquete continua (decision del usuario 2026-10-26)."""
 
     nombre: str

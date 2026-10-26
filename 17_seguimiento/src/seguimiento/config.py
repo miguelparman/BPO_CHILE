@@ -74,11 +74,8 @@ class Settings:
     reintentos_conexion: int = 3
     espera_reintento_s: float = 300
     log_dir: Path = Path("logs")
-    # Frescura de los CSV (frescura.py): antiguedad maxima, ventana de una
-    # misma publicacion del bot y "recien modificado" (publicando), en minutos.
+    # Frescura de los CSV (frescura.py): antiguedad maxima en minutos.
     frescura_max_min: int = 150
-    frescura_ventana_min: int = 15
-    frescura_reciente_min: int = 10
 
 
 def _require_env(nombre: str) -> str:
@@ -133,6 +130,4 @@ def cargar_configuracion(base_dir: Path) -> Settings:
         espera_reintento_s=_env_int("ESPERA_REINTENTO_S", 300),
         log_dir=base_dir / "logs",
         frescura_max_min=_env_int("FRESCURA_MAX_MIN", 150),
-        frescura_ventana_min=_env_int("FRESCURA_VENTANA_MIN", 15),
-        frescura_reciente_min=_env_int("FRESCURA_RECIENTE_MIN", 10),
     )
