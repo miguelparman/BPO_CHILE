@@ -4,7 +4,7 @@ import pytest
 
 import mappings as m
 from exceptions import PipelineError
-from paquetes import PAQUETES, seleccionar
+from paquetes import PAQUETES, archivos_de, seleccionar
 from paquetes.base import TareaTransaccion
 from pipeline import ADVERTENCIA, OK, OMITIDA, SeguimientoPipeline
 from tests.unit.fakes import FuenteFalsa, LoaderFalso, csv_crudo, esquema_de
@@ -131,3 +131,74 @@ def test_seleccion_de_paquetes():
     assert [p.codigo for p in seleccionar(solo=["07", "03"])] == ["03", "07"]
     with pytest.raises(Exception):
         seleccionar(desde="05")
+
+
+# --------------------------------------------------------------------------- #
+# Frescura: se omiten solo los bloques que usan el archivo viejo
+# --------------------------------------------------------------------------- #
+def _correr_omitiendo(omitir, paquetes=PAQUETES, archivos=None):
+    loader = _loader()
+    resultado = SeguimientoPipeline(loader, FuenteFalsa(archivos or _archivos_validos()), paquetes).run(omitir=omitir)
+    return loader, resultado
+
+
+def test_casos_viejo_omite_solo_el_bloque_casos_y_sigue_con_todo_lo_demas():
+    loader, resultado = _correr_omitiendo({m.ARCHIVO_CASOS: "datos viejos"})
+    omitidas = [r.tarea for r in resultado.advertencias]
+    assert omitidas == [
+        "Package\CARGA BASE CASOS SALESFORCE\CARGA TEMPORAL CASOS",
+        "Package\CARGA BASE CASOS SALESFORCE\FECHA BASE",
+        "Package\CARGA BASE CASOS SALESFORCE\LIMPIA BASE CHILE + Package\CARGA BASE CASOS SALESFORCE\CARGA CASOS CHILE",
+    ]
+    tablas = {e[1] for e in loader.eventos if e[0] == "temporal"}
+    assert "TBL_SALESFORCE_CASOS" not in tablas and "TBL_SALESFORCE_CASOS_B" in tablas
+    scripts = loader.scripts()
+    assert any("Update_Carga_Casos_Chile" in s for s in scripts)  # el 02 registra su log (Casos B si corrio)
+    assert any("SP_PROCESO_SEGUIMIENTO" in s for s in scripts)  # el 07 siempre corre
+
+
+def test_nombre_contacto_viejo_omite_casos_porque_lo_cruza():
+    _, resultado = _correr_omitiendo({m.ARCHIVO_NOMBRE_CONTACTO: "datos viejos"})
+    assert any("CARGA TEMPORAL CASOS" in r.tarea and "Reporte_Nombre_Contacto" in r.detalle for r in resultado.advertencias)
+
+
+def test_descripciones_nc_viejo_no_ejecuta_el_truncate():
+    p06 = [p for p in PAQUETES if p.codigo == "06"]
+    loader, resultado = _correr_omitiendo({m.ARCHIVO_DESCRIPCIONES_NC: "datos viejos"}, p06)
+    scripts = loader.scripts()
+    assert not any("TBL_DESCRIPCIONES_NC" in s for s in scripts)  # no se vacia la tabla
+    assert ("sp_folios_nc",) not in loader.eventos and not any(e[0] == "nc" for e in loader.eventos)
+    assert any("TBL_HISTORIAL_COMENTARIOS" in s for s in scripts)  # Comentarios si se carga
+    assert resultado.tareas[-1].tarea == "Package\Log Fin" and resultado.tareas[-1].estado == OK
+
+
+def test_paquete_con_todos_sus_bloques_omitidos_no_escribe_logs():
+    loader, resultado = _correr_omitiendo({m.ARCHIVO_CORREOS: "datos viejos"})
+    scripts = loader.scripts()
+    assert not any("Update_Reporte_Correos_Chile" in s for s in scripts)  # ni Log Inicio ni Log Fin del 03
+    assert any(r.paquete == "03" and r.tarea == "(paquete completo)" for r in resultado.advertencias)
+    assert any("Update_Historial_Casos_Chile" in s for s in scripts)  # el 04 corre igual
+    assert sum(1 for e in loader.eventos if e[0] == "sesion") == len(PAQUETES) - 1
+
+
+def test_todo_viejo_solo_corre_el_07():
+    omitir = {a: "datos viejos" for a in archivos_de(PAQUETES)}
+    loader, resultado = _correr_omitiendo(omitir)
+    scripts = loader.scripts()
+    assert [e for e in loader.eventos if e[0] == "temporal"] == []
+    assert any("SP_INSUMOS_SEGUIMIENTO" in s for s in scripts) and any("SP_PROCESO_SEGUIMIENTO" in s for s in scripts)
+    assert {r.paquete for r in resultado.advertencias} == {"02", "03", "04", "06"}
+
+
+def test_archivo_sin_filas_se_omite_como_viejo():
+    archivos = _archivos_validos()
+    archivos[m.ARCHIVO_HISTORIAL.nombre] = csv_crudo(["a"] * 6, [])  # solo encabezado
+    loader, resultado = _correr_omitiendo({}, archivos=archivos)
+    assert any(r.paquete == "04" and "no trae filas" in r.detalle for r in resultado.advertencias)
+    assert "TBL_SALESFORCE_HISTORIAL_CASOS" not in {e[1] for e in loader.eventos if e[0] == "temporal"}
+
+
+def test_no_se_descargan_los_archivos_omitidos():
+    fuente = FuenteFalsa(_archivos_validos())
+    SeguimientoPipeline(_loader(), fuente, PAQUETES).run(omitir={m.ARCHIVO_DESCRIPCIONES_NC: "viejo"})
+    assert m.ARCHIVO_DESCRIPCIONES_NC.nombre not in fuente.leidos

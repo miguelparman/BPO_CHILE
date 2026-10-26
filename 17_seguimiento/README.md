@@ -27,12 +27,25 @@ python main.py                      :: corrida completa 02 -> 07
 python main.py --desde 04           :: retomar desde un paquete
 python main.py --solo 03 04         :: solo esos paquetes (en orden)
 python main.py --solo-validar       :: extrae, valida y transforma; no escribe nada
+python main.py --verificar          :: solo conexiones + frescura de los archivos; no carga nada (exit 0 / 1 / 2)
 python main.py --origen-local "D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\SEGUIMIENTO"
 scripts\ejecutar_seguimiento.cmd    :: para el Programador de tareas (devuelve el exit code)
 ```
 
-Antes de ejecutar se validan todas las conexiones: SQL Server, y SharePoint con sus archivos. Si alguna falla, se
-reintenta cada 5 min hasta 3 veces y luego termina con exit 1 sin ejecutar nada. Cada corrida deja su log en `logs/`.
+Programación: tarea `\ETL\ETL Seguimiento Chile`, de **lunes a viernes** a las 07:00, 10:00, 13:00 y 16:00, media hora
+después de cada publicación de `201_bot_salesforce`.
+
+Antes de cargar:
+1. **Conexiones:** SQL Server `172.17.0.162` y SharePoint, con sus archivos. Si alguna falla, se reintenta cada 5 min
+   hasta 3 veces y luego termina con exit 1 sin ejecutar nada.
+2. **Frescura de los archivos** (`frescura.py`): un archivo con más de `FRESCURA_MAX_MIN` (150) minutos, a medio
+   publicar por el bot (se espera 5 min × 3) o sin filas **no se carga**. Se omiten solo los bloques de tareas que lo
+   usan (`paquetes/pXX_*.py`, `bloques=`) y la corrida continua con los demás. Si se omiten todos los bloques de un
+   paquete, no se escriben sus Log Inicio/Fin en `LOGS_PROCESOS`. El paquete 07 (SP) corre siempre. Cada omisión
+   queda como advertencia en el log.
+
+`--verificar` devuelve 0 si todo está listo, 1 si falla una conexión y 2 si alguna carga se omitiría por frescura.
+Cada corrida deja su log en `logs/`.
 
 ## Estructura (src layout, modular por componentes)
 
@@ -52,6 +65,7 @@ src/seguimiento/
   sql.py + scripts_sql/pXX/       T-SQL literal de cada Execute SQL Task
   db.py, sharepoint/              adaptadores pyodbc / Microsoft Graph
   conexiones.py                   validación previa de conexiones
+  frescura.py                     antigüedad / publicación en curso / vacío de los CSV (omite bloques)
   config.py, logging_setup.py, exceptions.py
 tests/unit/                       pruebas unitarias (sin base ni SharePoint)
 tests/equivalencia/               equivalencia estructural contra los .dtsx originales

@@ -14,7 +14,7 @@ Python (5 tareas): Log Inicio -> CARGA TEMPORAL HISTORIAL (#temporal)
 from __future__ import annotations
 
 import mappings as m
-from paquetes.base import Paquete, TareaDataFlow, TareaSql
+from paquetes.base import Bloque, Paquete, TareaDataFlow, TareaSql
 from sql import leer
 
 _C = "Package\\CARGA BASE TEMPORAL HISTORIAL CASOS\\"
@@ -32,5 +32,12 @@ PAQUETE = Paquete(
     redundantes=(
         (_C + "TRUNCA TEMPORAL HISTORIAL", "#temporal de la sesion (nace vacia)"),
         ("Package\\TRUNCA TEMPORA HISTORICO", "la #temporal se descarta al cerrar la sesion"),
+    ),
+    bloques=(
+        Bloque(
+            "Historial",
+            (m.ARCHIVO_HISTORIAL,),
+            (_C + "CARGA TEMPORAL HISTORIAL", _C + "LIMPIA TEMPORAL HISTORIAL", "Package\\CARGA HISTORIAL CHILE"),
+        ),
     ),
 )

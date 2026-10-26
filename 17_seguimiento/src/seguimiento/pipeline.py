@@ -9,6 +9,11 @@ Reglas (decision del usuario):
     queda en 'exec...', como en SSIS) ni los paquetes siguientes.
   - Excepcion: 'Carga Descripciones NC' (06) registra su error como
     advertencia y el paquete continua (asi se comporta hoy en SSIS).
+  - Frescura (frescura.py): un archivo viejo, a medio publicar o sin filas
+    no se carga; se omiten solo los bloques que lo usan (paquetes/base.Bloque)
+    como advertencia, y la corrida continua. Si se omiten todos los bloques
+    de un paquete, el paquete completo se omite (sin Log Inicio/Fin). El 07
+    no tiene bloques: siempre corre.
 
 Optimizaciones (mismo resultado):
   - Todos los CSV se descargan EN PARALELO al empezar (FuentePrecargada);
@@ -29,10 +34,10 @@ from dataclasses import dataclass, field
 from typing import Sequence
 
 from carga.loader import SeguimientoLoader
-from exceptions import PipelineError
+from exceptions import ExtraccionError, PipelineError
 from extraccion.extractor import FuenteArchivo, FuentePrecargada, leer_csv
 from logging_setup import NOMBRE_LOGGER
-from mappings import ARCHIVO_DESCRIPCIONES_NC, FlujoSpec
+from mappings import ARCHIVO_DESCRIPCIONES_NC, ArchivoSpec, FlujoSpec
 from paquetes import archivos_de
 from paquetes.base import Paquete, TareaDataFlow, TareaDescripcionesNC, TareaSql, TareaTransaccion
 from transformacion.cruce import aplicar_cruce
@@ -41,6 +46,38 @@ from transformacion.transformer import transformar
 from validacion.validator import validar_anchos_destino, validar_esquema, validar_estructura
 
 logger = logging.getLogger(NOMBRE_LOGGER)
+
+
+def _sin_filas(fuente: FuenteArchivo, archivos: Sequence[ArchivoSpec]) -> dict[ArchivoSpec, str]:
+    """Archivos descargados que no traen filas de datos (o ni encabezado):
+    cargarlos vaciaria/no actualizaria nada util (y en Descripciones NC el
+    TRUNCATE dejaria la tabla vacia), asi que se omiten como los viejos.
+    Un error de descarga NO se trata aqui: se informa al usarlo, como antes."""
+    vacios = {}
+    for archivo in archivos:
+        try:
+            datos = fuente.leer(archivo)
+        except Exception:  # noqa: BLE001 - error de descarga: lo levanta la tarea que lo use
+            continue
+        try:
+            sin_filas = not leer_csv(datos, archivo)
+        except ExtraccionError:
+            sin_filas = True
+        if sin_filas:
+            vacios[archivo] = "el archivo no trae filas de datos"
+            logger.warning("  [OMITIR] %s: el archivo no trae filas de datos.", archivo.nombre)
+    return vacios
+
+
+def _bloques_omitidos(paquete: Paquete, omitir: dict[ArchivoSpec, str]) -> dict[str, str]:
+    """{bloque: motivo} de los bloques del paquete que usan un archivo omitido."""
+    salida = {}
+    for bloque in paquete.bloques:
+        motivos = [f"{a.nombre}: {omitir[a]}" for a in bloque.archivos if a in omitir]
+        if motivos:
+            salida[bloque.nombre] = "; ".join(motivos)
+    return salida
+
 
 OK = "OK"
 OMITIDA = "OMITIDA"
@@ -75,16 +112,26 @@ class SeguimientoPipeline:
         self._paquetes = tuple(paquetes)
         self._paralelas = descargas_paralelas
 
-    def run(self, solo_validar: bool = False) -> ResultadoCorrida:
-        archivos = archivos_de(self._paquetes)
+    def run(self, solo_validar: bool = False, omitir: dict[ArchivoSpec, str] | None = None) -> ResultadoCorrida:
+        """'omitir': archivos que no se cargan (frescura.py) -> motivo. Se
+        omiten solo los bloques que los usan; el resto continua."""
+        omitir = dict(omitir or {})
+        archivos = [a for a in archivos_de(self._paquetes) if a not in omitir]
         inicio = time.monotonic()
         fuente = FuentePrecargada(self._fuente, archivos, self._paralelas)
         if archivos:
             logger.info("%s archivo(s) descargados en paralelo en %.1f s.", len(archivos), time.monotonic() - inicio)
+        omitir.update(_sin_filas(fuente, archivos))
         resultado = ResultadoCorrida()
         for paquete in self._paquetes:
             logger.info("=" * 70)
             logger.info("Paquete %s: %s%s", paquete.codigo, paquete.dtsx, " (solo validar)" if solo_validar else "")
+            omitidos = _bloques_omitidos(paquete, omitir)
+            if paquete.bloques and len(omitidos) == len(paquete.bloques):
+                detalle = "paquete omitido completo (sin Log Inicio/Fin): " + "; ".join(omitidos.values())
+                logger.warning("[%s] %s", paquete.codigo, detalle)
+                resultado.tareas.append(ResultadoTarea(paquete.codigo, "(paquete completo)", ADVERTENCIA, detalle=detalle))
+                continue
             inicio_paquete = time.monotonic()
             if not solo_validar:
                 try:
@@ -92,6 +139,12 @@ class SeguimientoPipeline:
                 except Exception as exc:
                     raise PipelineError(paquete.codigo, "(apertura de la sesion)", exc) from exc
             for tarea in paquete.tareas:
+                bloque = paquete.bloque_de(tarea)
+                if bloque and bloque.nombre in omitidos:
+                    r = ResultadoTarea(paquete.codigo, tarea.nombre, ADVERTENCIA, detalle=f"omitida (bloque {bloque.nombre}): {omitidos[bloque.nombre]}")
+                    resultado.tareas.append(r)
+                    logger.warning("[%s] %s -> OMITIDA %s", paquete.codigo, tarea.nombre, r.detalle)
+                    continue
                 inicio = time.monotonic()
                 try:
                     r = self._ejecutar(paquete, tarea, fuente, solo_validar)

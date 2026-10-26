@@ -40,7 +40,11 @@ Uso:
     python main.py --desde 04              # retoma desde un paquete (04, 06, 07)
     python main.py --solo 03 04            # solo esos paquetes (en orden)
     python main.py --solo-validar          # extrae, valida y transforma; no escribe nada
+    python main.py --verificar             # solo conexiones + frescura de los archivos; no carga nada
     python main.py --origen-local RUTA     # contingencia: CSV crudos del bot desde una carpeta local
+
+Codigo de salida: 0 OK; 1 error (conexion, configuracion o una tarea fallo);
+--verificar: 2 si alguna carga se omitiria por frescura.
 """
 
 from __future__ import annotations
@@ -59,8 +63,9 @@ from config import cargar_configuracion  # noqa: E402
 from db import DatabaseGateway, crear_conexion  # noqa: E402
 from exceptions import ConexionError, PipelineError, SeguimientoError  # noqa: E402
 from extraccion.extractor import FuenteArchivo, FuenteLocal, FuenteSharePoint  # noqa: E402
+from frescura import ReglasFrescura, estados_sharepoint, revisar  # noqa: E402
 from logging_setup import NOMBRE_LOGGER, configurar_logging  # noqa: E402
-from paquetes import CODIGOS, seleccionar  # noqa: E402
+from paquetes import CODIGOS, archivos_de, seleccionar  # noqa: E402
 from pipeline import SeguimientoPipeline  # noqa: E402
 from sharepoint.client import conectar  # noqa: E402
 
@@ -72,6 +77,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--desde", choices=CODIGOS, help="Ejecuta desde este paquete en adelante.")
     parser.add_argument("--solo", nargs="+", choices=CODIGOS, help="Ejecuta solo estos paquetes (en orden).")
     parser.add_argument("--solo-validar", action="store_true", help="Extrae, valida y transforma; no escribe.")
+    parser.add_argument("--verificar", action="store_true", help="Solo conexiones y frescura de los archivos; no carga nada.")
     parser.add_argument("--origen-local", type=Path, help="Lee los CSV crudos desde una carpeta local en vez de SharePoint.")
     return parser.parse_args()
 
@@ -80,6 +86,20 @@ def crear_fuente_sharepoint(settings) -> FuenteSharePoint:
     sp = settings.sharepoint
     cliente, drive_id = conectar(sp)
     return FuenteSharePoint(cliente, drive_id, sp.carpetas, sp.web_drive)
+
+
+def revisar_frescura(settings, fuente: FuenteSharePoint, paquetes) -> dict:
+    """Archivos que no se cargan (viejos, a medio publicar o vacios) -> motivo."""
+    archivos = archivos_de(paquetes)
+    if not archivos:
+        return {}
+    reglas = ReglasFrescura(settings.frescura_max_min, settings.frescura_ventana_min, settings.frescura_reciente_min)
+    return revisar(
+        lambda: estados_sharepoint(fuente.cliente, fuente.drive_id, settings.sharepoint.carpetas, archivos),
+        reglas,
+        reintentos=settings.reintentos_conexion,
+        espera_s=settings.espera_reintento_s,
+    )
 
 
 def main() -> int:
@@ -101,8 +121,25 @@ def main() -> int:
             reintentos=settings.reintentos_conexion,
             espera_s=settings.espera_reintento_s,
         )
-        fuente: FuenteArchivo = FuenteLocal(args.origen_local) if args.origen_local else crear_fuente_sharepoint(settings)
-        resultado = SeguimientoPipeline(SeguimientoLoader(db), fuente, paquetes).run(solo_validar=args.solo_validar)
+        omitir: dict = {}
+        if args.origen_local:
+            fuente: FuenteArchivo = FuenteLocal(args.origen_local)
+            logger.info("Origen local: se omite el control de frescura de SharePoint.")
+        else:
+            fuente = crear_fuente_sharepoint(settings)
+            omitir = revisar_frescura(settings, fuente, paquetes)
+        if args.verificar:
+            logger.info("=" * 70)
+            if omitir:
+                logger.warning("Verificacion: conexiones OK; %s archivo(s) NO se cargarian:", len(omitir))
+                for archivo, motivo in omitir.items():
+                    logger.warning("  %s: %s", archivo.nombre, motivo)
+                return 2
+            logger.info("Verificacion: conexiones OK y todos los archivos frescos. Listo para correr.")
+            return 0
+        resultado = SeguimientoPipeline(SeguimientoLoader(db), fuente, paquetes).run(
+            solo_validar=args.solo_validar, omitir=omitir
+        )
         logger.info("=" * 70)
         logger.info("Proceso terminado: %s tareas, %s advertencia(s).", len(resultado.tareas), len(resultado.advertencias))
         for t in resultado.advertencias:

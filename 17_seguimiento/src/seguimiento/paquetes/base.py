@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mappings import FlujoSpec
+from mappings import ArchivoSpec, FlujoSpec
 
 
 @dataclass(frozen=True)
@@ -53,12 +53,27 @@ Tarea = TareaSql | TareaTransaccion | TareaDataFlow | TareaDescripcionesNC
 
 
 @dataclass(frozen=True)
+class Bloque:
+    """Tareas que dependen de unos archivos: si alguno esta viejo, a medio
+    publicar o vacio (frescura.py), se omite el bloque COMPLETO y el resto
+    del paquete continua (decision del usuario 2026-10-26)."""
+
+    nombre: str
+    archivos: tuple[ArchivoSpec, ...]
+    tareas: tuple[str, ...]  # Tarea.nombre de cada tarea del bloque
+
+
+@dataclass(frozen=True)
 class Paquete:
     codigo: str  # '02', '03', ...
     dtsx: str
     tareas: tuple[Tarea, ...]
     # Tareas del .dtsx que no se ejecutan por redundantes: {refId: motivo}
     redundantes: tuple[tuple[str, str], ...] = ()
+    bloques: tuple[Bloque, ...] = ()
+
+    def bloque_de(self, tarea) -> Bloque | None:
+        return next((b for b in self.bloques if tarea.nombre in b.tareas), None)
 
     @property
     def refids(self) -> list[str]:

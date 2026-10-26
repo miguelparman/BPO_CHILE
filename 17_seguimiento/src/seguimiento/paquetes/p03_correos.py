@@ -14,7 +14,7 @@ Python (5 tareas): Log Inicio -> CARGA TEMPORAL CORREOS (#temporal)
 from __future__ import annotations
 
 import mappings as m
-from paquetes.base import Paquete, TareaDataFlow, TareaSql
+from paquetes.base import Bloque, Paquete, TareaDataFlow, TareaSql
 from sql import leer
 
 _C = "Package\\CARGA BASE CORREOS SALESFORCE\\"
@@ -32,5 +32,12 @@ PAQUETE = Paquete(
     redundantes=(
         (_C + "TRUNCA TEMPORAL CORREOS", "#temporal de la sesion (nace vacia)"),
         ("Package\\TRUNCA TEMPORAL CORREOS", "la #temporal se descarta al cerrar la sesion"),
+    ),
+    bloques=(
+        Bloque(
+            "Correos",
+            (m.ARCHIVO_CORREOS,),
+            (_C + "CARGA TEMPORAL CORREOS", _C + "LIMPIA TEMPORAL CORREOS", "Package\\CARGA CORREOS PERÙ"),
+        ),
     ),
 )

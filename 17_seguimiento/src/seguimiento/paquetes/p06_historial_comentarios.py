@@ -20,7 +20,7 @@ TBL_DESCRIPCIONES_NC sigue siendo permanente: la lee SP_FOLIOS_NC.
 from __future__ import annotations
 
 import mappings as m
-from paquetes.base import Paquete, TareaDataFlow, TareaDescripcionesNC, TareaSql
+from paquetes.base import Bloque, Paquete, TareaDataFlow, TareaDescripcionesNC, TareaSql
 from sql import leer
 
 _C = "Package\\CARGA BASE TEMPORAL HISTORIAL COMENTARIOS\\"
@@ -41,5 +41,18 @@ PAQUETE = Paquete(
     redundantes=(
         (_C + "TRUNCATE TEMPORAL COMENTARIOS", "#temporal de la sesion (nace vacia)"),
         ("Package\\TRUNCA TEMPORAL HISTORICO", "la #temporal se descarta al cerrar la sesion"),
+    ),
+    bloques=(
+        Bloque(
+            "Comentarios",
+            (m.ARCHIVO_COMENTARIOS,),
+            (_C + "CARGA TEMPORAL COMENTARIOS", _C + "LIMPIA TEMPORAL ASIGNACIONES", "Package\\CARGA COMENTARIOS CHILE"),
+        ),
+        # Incluye el TRUNCATE: si el archivo esta viejo no se vacia la tabla (la lee SP_FOLIOS_NC).
+        Bloque(
+            "Descripciones NC",
+            (m.ARCHIVO_DESCRIPCIONES_NC,),
+            (_NC + "TRUNCATE TEMPORAL", _NC + "Carga Descripciones NC"),
+        ),
     ),
 )

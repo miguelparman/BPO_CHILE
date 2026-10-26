@@ -192,16 +192,51 @@ en Salesforce.
 False`, que reproduce el `�`→`?` de SSIS) y da **EQUIVALENTE**. Lo que la reparación cambia se lista aparte en el
 reporte.
 
-## 9. Otros hallazgos del proceso original
+## 9. Frescura de las fuentes (2026-10-26, a pedido del usuario)
+
+SSIS cargaba lo que encontrara, aunque fuera viejo: por ejemplo, las copias de `01 SEGUIMIENTO` de Nombre_Contacto y
+Descripciones NC estaban detenidas desde el 11/09 sin ningún aviso. Ahora `frescura.py` revisa los metadatos de los 7
+archivos en SharePoint (fecha y tamaño, sin descargarlos) antes de cargar:
+
+| Situación | Regla | Acción |
+|---|---|---|
+| Viejo | Más de `FRESCURA_MAX_MIN` = **150** min (tolera que se pierda una publicación del bot; lo normal son ~30 min) | Se omite |
+| El bot está publicando | Modificado hace menos de 10 min, o más de 15 min antes que el archivo más nuevo (versión anterior) | Espera 5 min y revisa de nuevo (× 3); si persiste, se omite |
+| Vacío | 0 bytes, o sin filas de datos al descargarlo | Se omite |
+
+**Decisión del usuario: omitir esa carga y continuar con las demás.** Se omite solo el bloque de tareas que usa el
+archivo (`paquetes/base.Bloque`):
+
+| Paquete | Bloque | Archivos |
+|---|---|---|
+| 02 | Casos (carga, FECHA BASE, borrado + carga de TBL_CASOS) | Casos + Nombre Contacto |
+| 02 | Casos B | Casos B |
+| 03 | Correos | Correos |
+| 04 | Historial | Historial |
+| 06 | Comentarios | Comentarios |
+| 06 | Descripciones NC (**incluye el TRUNCATE**, para no vaciar la tabla; y SP_FOLIOS_NC) | Descripciones NC |
+| 07 | — (los SP corren siempre) | — |
+
+Si se omiten todos los bloques de un paquete, el paquete completo no corre y no escribe sus Log Inicio/Fin en
+`LOGS_PROCESOS`. Si se omite Casos, igual corren 03, 04 y 06 contra el `TBL_CASOS` ya existente; lo que dependa de
+casos nuevos entra en la siguiente corrida, porque el archivo lo vuelve a traer y el MERGE lo inserta.
+`tests/unit/test_bloques.py` comprueba que ninguna tarea use una #temporal de un bloque que podría omitirse.
+
+`python main.py --verificar` ejecuta solo la validación de conexiones y de frescura (exit 0 listo, 1 conexión, 2 alguna
+carga se omitiría). La tarea programada pasó a **lunes a viernes**, igual que el bot, con las mismas horas. Verificado
+el 2026-10-26 contra SharePoint real: con los archivos de las 11:01–11:05 todo queda OK; forzando `FRESCURA_MAX_MIN=30`,
+se omiten 02, 03, 04 y 06 y el 07 corre.
+
+## 10. Otros hallazgos del proceso original
 
 * Correos: de las filas del archivo, solo cruzan con `TBL_CASOS` unas pocas (`INNER JOIN` del MERGE), igual que en
   SSIS.
 
-## 10. Pruebas y evidencia
+## 11. Pruebas y evidencia
 
 | Prueba | Cómo | Resultado (2026-10-26) |
 |---|---|---|
-| Unitarias + estructurales | `python -m pytest` | **134 passed** |
+| Unitarias + estructurales | `python -m pytest` | **155 passed** |
 | Estructural vs `.dtsx` | SQL byte a byte; redirección a #temporales sin otros cambios; cada tarea migrada, redundante (con la redundancia verificada) o no migrada; orden; linaje; tipos; anchos; credenciales | OK |
 | Mecánica del loader contra SQL Server (solo #temporales) | Sesión `us_english`/`mdy`, carga en #temporal, redirección, restablecer `DATEFORMAT`, rollback de transacción, detección de reconexión | OK |
 | Solo validar con SharePoint | `python main.py --solo-validar` | 33 tareas, 0 errores. Descarga paralela 8,4 s; transformación < 2 s. |

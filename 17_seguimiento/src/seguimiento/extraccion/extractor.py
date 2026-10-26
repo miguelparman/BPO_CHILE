@@ -47,6 +47,7 @@ class FuenteSharePoint:
     def __init__(self, cliente, drive_id: str, carpetas: dict[str, str], web_drive: str = "") -> None:
         self._cliente = cliente
         self._drive_id = drive_id
+        self.cliente, self.drive_id = cliente, drive_id  # tambien para leer metadatos (frescura.py)
         self._carpetas = carpetas
         self._web_drive = web_drive
 
