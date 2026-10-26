@@ -1,3 +1,4 @@
 # El T-SQL de scripts_sql/ es copia literal (byte a byte) del .dtsx, con saltos LF:
 # no convertir a CRLF en el checkout (lo verifica tests/equivalencia).
 src/seguimiento/scripts_sql/** text eol=lf
+docs/referencia_sp/*.sql -text

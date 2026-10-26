@@ -227,12 +227,70 @@ carga se omitiría). La tarea programada pasó a **lunes a viernes**, igual que 
 el 2026-10-26 contra SharePoint real: con los archivos de las 11:01–11:05 todo queda OK; forzando `FRESCURA_MAX_MIN=30`,
 se omiten 02, 03, 04 y 06 y el 07 corre.
 
-## 10. Otros hallazgos del proceso original
+## 10. Rendimiento en SQL Server (2026-10-26, a pedido del usuario)
+
+**Diagnóstico** (con `sys.dm_exec_query_stats`, corrida de las 10:55): `SP_PROCESO_SEGUIMIENTO` tardaba 220 s de los
+~5,6 min de la corrida.
+- 154 s se iban en una sola sentencia que corría en **un hilo**. La causa es la función escalar
+  `[BBDD_GENERAL].[dbo].[FECHAS_VALIDAS]`: tiene un `WHILE`, así que SQL Server no la puede integrar en la consulta
+  (no es *inlineable*). Se ejecutaba fila por fila, 2 veces por caso (unas 836.000 llamadas), cuando solo hay
+  ~1.228 fechas distintas.
+- Otros 55 s iban a dos `EXISTS` sobre `TBL_HISTORIAL_CASOS` (8,9 M filas) por cada caso.
+
+**Cambio en el SP** (`tools/optimizar_sp_proceso_seguimiento.py`). Se aplicó a partir de la definición viva del
+servidor, verificando cada reemplazo, y queda comentado dentro del SP como `OPTIMIZACION 2026-10-26 (17_seguimiento)`:
+- **A.** `#FECHAS_QUIEBRE`: la **misma** función se calcula una sola vez por fecha distinta, y la sentencia la toma
+  con un `LEFT JOIN`.
+- **B.** `#HIST_VALOR_NUEVO`: los casos con `[Valor nuevo]` 'CHI - Especialista SSPP PYME' o 'CHI-Isla de Retención'
+  se leen una vez del historial; los dos `EXISTS` (con sus mismas condiciones) consultan esa tabla.
+
+**Prueba antes de aplicar** (modo `probar`, solo lectura con #temporales): se ejecutaron la versión actual y la nueva
+de cada sentencia con los mismos datos y se compararon fila por fila (`EXCEPT` en ambos sentidos):
+
+| Tabla | Filas actual / nueva | Columnas | Diferencias | Tiempo actual → nuevo |
+|---|---:|---:|---:|---:|
+| TOTAL_1 (+ UPDATE) | 1.108.194 / 1.108.194 | 74 | 0 | 173,3 s → **10,4 s** |
+| TOTAL_2 (sin cambios) | 1.108.194 / 1.108.194 | 97 | 0 | 7,2 s → 12,2 s |
+| **TBL_SEGUIMIENTO** (final) | 1.108.194 / 1.108.194 | 106 | **0** | 69,9 s → 58,0 s |
+
+Se aplicó el 2026-10-26 a las 12:48. El respaldo de la definición anterior está en
+`docs/referencia_sp/SP_PROCESO_SEGUIMIENTO_antes_20261026.sql`, y se vuelve atrás con el modo `revertir`.
+**Ojo:** este SP lo mantiene otra persona. Si lo edita partiendo de una copia anterior, la optimización se pierde.
+
+**Índice agrupado** `CIX_HISTORIAL_COMENTARIOS_CASO_FECHA` en `[CL_SALESFORCE_ACTUAL].[dbo].[TBL_HISTORIAL_COMENTARIOS]`
+(`[Número del caso]`, `[Fecha de creación de Comentario del caso]`). La tabla era un *heap* de 1,7 M filas sin
+índices. Ahora el MERGE del paquete 06 busca por caso y `SP_INSUMOS_SEGUIMIENTO` obtiene el último comentario por caso
+sin ordenar toda la tabla. Se creó en línea, en 6,4 s, con el modo `indice`; se quita con `quitar-indice`.
+
+**Medición en producción** (corrida programada de las 13:00, la primera con los dos cambios, comparada con la de
+las 10:55):
+
+| | 10:55 (antes) | 13:00 (después) |
+|---|---:|---:|
+| `SP_PROCESO_SEGUIMIENTO` | 222,4 s | **85,8 s (−61 %)** |
+| ↳ sentencia TOTAL_1 | 154,5 s, 1 hilo | **9,1 s**, 4 hilos |
+| Paquete 07 completo | 276 s | 182 s |
+| Corrida completa | 5 min 37 s | 4 min 51 s |
+
+En esa misma corrida otras sentencias tardaron **más**: `SP_INSUMOS` pasó de 30 s a 77 s y el borrado + carga de
+TBL_CASOS de 1,4 s a 15,5 s. Su tiempo total fue muy superior al de CPU, o sea que esperaban lecturas de disco. Afectó
+incluso a sentencias que no leen la tabla del índice, como la del código pendiente, que lee
+`TBL_CODIGO_INCUMPLIMIENTO_COMENTARIO`. La explicación es que la caché de memoria del servidor estaba "fría": la prueba
+de equivalencia (6 tablas temporales de 1,1 M filas) y la creación del índice, que reescribe la tabla, desplazaron de la
+memoria las tablas de producción justo antes de las 13:00. Queda por confirmar en una corrida normal (16:00).
+
+**Mantenimiento del índice.** El contenido y las estadísticas se mantienen solos (auto update stats activado). Para la
+fragmentación hay una tarea mensual, `\ETL\ETL Seguimiento Mantener Indice`, que corre el primer lunes de cada mes a
+las 06:00 con `scripts\mantener_indice.cmd` (modo `mantener-indice`). Mide la fragmentación y actúa solo si hace falta:
+menos de 5 % no hace nada, de 5 a 30 % hace `REORGANIZE` y desde 30 % `REBUILD ONLINE`. Deja registro en
+`logs\mantenimiento_indice.log`. En el servidor no había ningún plan de mantenimiento de índices.
+
+## 11. Otros hallazgos del proceso original
 
 * Correos: de las filas del archivo, solo cruzan con `TBL_CASOS` unas pocas (`INNER JOIN` del MERGE), igual que en
   SSIS.
 
-## 11. Pruebas y evidencia
+## 12. Pruebas y evidencia
 
 | Prueba | Cómo | Resultado (2026-10-26) |
 |---|---|---|

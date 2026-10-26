@@ -33,7 +33,8 @@ scripts\ejecutar_seguimiento.cmd    :: para el Programador de tareas (devuelve e
 ```
 
 Programación: tarea `\ETL\ETL Seguimiento Chile`, de **lunes a viernes** a las 07:00, 10:00, 13:00 y 16:00, media hora
-después de cada publicación de `201_bot_salesforce`.
+después de cada publicación de `201_bot_salesforce`. Mantenimiento del índice de comentarios: tarea
+`\ETL\ETL Seguimiento Mantener Indice`, primer lunes de cada mes a las 06:00 (`scripts\mantener_indice.cmd`).
 
 Antes de cargar:
 1. **Conexiones:** SQL Server `172.17.0.162` y SharePoint, con sus archivos. Si alguna falla, se reintenta cada 5 min
@@ -71,6 +72,7 @@ tests/unit/                       pruebas unitarias (sin base ni SharePoint)
 tests/equivalencia/               equivalencia estructural contra los .dtsx originales
 tools/equivalencia.py             equivalencia de datos SSIS vs Python (solo lectura)
 tools/limpiar_duplicados_comentarios.py   limpieza de comentarios reinsertados por SSIS (simula; --aplicar borra con respaldo)
+tools/optimizar_sp_proceso_seguimiento.py optimizacion de SP_PROCESO_SEGUIMIENTO + indice de comentarios (probar / aplicar / revertir / indice / mantener-indice)
 docs/                             EQUIVALENCIA.md, no_migrado/, referencia_sp/
 ```
 
