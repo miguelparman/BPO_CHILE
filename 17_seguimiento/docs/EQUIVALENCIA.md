@@ -262,22 +262,32 @@ Se aplicó el 2026-10-26 a las 12:48. El respaldo de la definición anterior est
 índices. Ahora el MERGE del paquete 06 busca por caso y `SP_INSUMOS_SEGUIMIENTO` obtiene el último comentario por caso
 sin ordenar toda la tabla. Se creó en línea, en 6,4 s, con el modo `indice`; se quita con `quitar-indice`.
 
-**Medición en producción** (corrida programada de las 13:00, la primera con los dos cambios, comparada con la de
-las 10:55):
+**Medición en producción** (tiempos del log de cada corrida programada; 10:55 es antes de los cambios, 13:00 y 16:00
+después):
 
-| | 10:55 (antes) | 13:00 (después) |
-|---|---:|---:|
-| `SP_PROCESO_SEGUIMIENTO` | 222,4 s | **85,8 s (−61 %)** |
-| ↳ sentencia TOTAL_1 | 154,5 s, 1 hilo | **9,1 s**, 4 hilos |
-| Paquete 07 completo | 276 s | 182 s |
-| Corrida completa | 5 min 37 s | 4 min 51 s |
+| | 10:55 (antes) | 13:00 | 16:00 |
+|---|---:|---:|---:|
+| `SP_PROCESO_SEGUIMIENTO` | 222,4 s | **85,8 s** | **90,8 s** |
+| ↳ sentencia TOTAL_1 | 154,5 s, 1 hilo | 9,1 s, 4 hilos | 9,8 s |
+| `SP_INSUMOS_SEGUIMIENTO` | 38,2 s | 77,4 s | 50,2 s |
+| `SP_ASESOR_RESPONSABLE` | 15,0 s | 18,8 s | 57,3 s (19,3 s en el servidor) |
+| Borrado + carga TBL_CASOS | 1,4 s | 15,5 s | 2,0 s |
+| MERGE comentarios (paquete 06) | 4,8 s | 7,0 s | 1,8 s (528 filas) |
+| Paquete 07 completo | 276 s | 182 s | 199 s |
+| Corrida completa | 5 min 37 s | 4 min 51 s | 4 min 33 s |
 
-En esa misma corrida otras sentencias tardaron **más**: `SP_INSUMOS` pasó de 30 s a 77 s y el borrado + carga de
-TBL_CASOS de 1,4 s a 15,5 s. Su tiempo total fue muy superior al de CPU, o sea que esperaban lecturas de disco. Afectó
-incluso a sentencias que no leen la tabla del índice, como la del código pendiente, que lee
-`TBL_CODIGO_INCUMPLIMIENTO_COMENTARIO`. La explicación es que la caché de memoria del servidor estaba "fría": la prueba
-de equivalencia (6 tablas temporales de 1,1 M filas) y la creación del índice, que reescribe la tabla, desplazaron de la
-memoria las tablas de producción justo antes de las 13:00. Queda por confirmar en una corrida normal (16:00).
+La mejora de `SP_PROCESO_SEGUIMIENTO` se mantiene en las dos corridas (−60 %). Las 1.108.669 filas de TBL_SEGUIMIENTO y
+todos los registros de LOGS_PROCESOS quedaron OK. El log muestra "1228 filas" para SEGUIMIENTO porque informa el conteo
+de la primera sentencia del SP, que ahora es el llenado de `#FECHAS_QUIEBRE` (una fila por fecha).
+
+A las 13:00 otras sentencias tardaron **más**. Su tiempo total fue muy superior al de CPU, o sea que esperaban lecturas de
+disco, e incluso afectó a sentencias que no leen la tabla del índice (código pendiente, que lee
+`TBL_CODIGO_INCUMPLIMIENTO_COMENTARIO`). La caché de memoria del servidor estaba "fría": la prueba de equivalencia (6
+tablas temporales de 1,1 M filas) y la creación del índice desplazaron de la memoria las tablas de producción. A las 16:00
+la carga de TBL_CASOS volvió a lo normal y el MERGE de comentarios fue el más rápido del día. El resto de la diferencia de
+las 16:00 no viene del SP: `dm_exec_procedure_stats` da 19,3 s para `SP_ASESOR_RESPONSABLE`, en línea con las 10:55 y las 13:00. Los otros ~38 s fueron esperas fuera de sus sentencias, mientras otra ETL Python del mismo equipo
+(sesión iniciada a las 16:00:41) ejecutaba en `SERVICIOS_GENERALES` una consulta con la función escalar
+`FUNC_CH_MINUTOS_VALIDOS_ENTRE_FECHAS`, que compite por CPU con la del seguimiento.
 
 **Mantenimiento del índice.** El contenido y las estadísticas se mantienen solos (auto update stats activado). Para la
 fragmentación hay una tarea mensual, `\ETL\ETL Seguimiento Mantener Indice`, que corre el primer lunes de cada mes a
