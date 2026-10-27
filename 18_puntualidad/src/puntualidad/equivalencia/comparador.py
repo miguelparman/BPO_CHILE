@@ -29,7 +29,7 @@ import sql
 from db import DatabaseGateway
 from exceptions import CargaError
 from logging_setup import NOMBRE_LOGGER
-from mappings import BD_PUNTUALIDAD, ESQUEMA, FUENTE_PUNTUALIDAD, TBL_SLA_REAL, Destino
+from mappings import BD_PUNTUALIDAD, ESQUEMA, FECHA_DESDE_DEFAULT, FUENTE_PUNTUALIDAD, TBL_SLA_REAL, Destino
 
 logger = logging.getLogger(NOMBRE_LOGGER)
 
@@ -293,7 +293,8 @@ def ejecutar_equivalencia(
         etapa(
             "Copia congelada de los casos",
             lambda: db.execute_autocommit(
-                f"SELECT * INTO {SNAP} FROM {FUENTE_PUNTUALIDAD} WHERE CAST([Fecha/Hora de apertura] AS date) >= '2025-08-01'"
+                f"SELECT * INTO {SNAP} FROM {FUENTE_PUNTUALIDAD} "
+                f"WHERE CAST([Fecha/Hora de apertura] AS date) >= '{FECHA_DESDE_DEFAULT}'"
             ),
         )
         resultado.notas.append(f"Casos congelados: {db.run_query(f'SELECT COUNT(*) FROM {SNAP}')[1][0][0]}")

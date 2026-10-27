@@ -108,7 +108,7 @@ LEFT JOIN
 ON
 	x3.[Motivo de contacto] = x0.[Motivo de contacto]
 WHERE
-	CAST([Fecha/Hora de apertura] AS date) >= '2025-08-01'
+	CAST([Fecha/Hora de apertura] AS date) >= '{{FECHA_DESDE}}'
 GO
 
 CREATE UNIQUE CLUSTERED INDEX ix_base_rid ON #base (rid)

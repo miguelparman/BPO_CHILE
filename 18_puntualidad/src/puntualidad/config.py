@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
@@ -78,6 +79,8 @@ class Settings:
     espera_reintento_s: float = 300
     log_dir: Path = Path("logs")
     evidencias_dir: Path = Path("evidencias")
+    # Casos con apertura desde esta fecha (FECHA_DESDE en .env), 'YYYY-MM-DD'.
+    fecha_desde: str = mappings.FECHA_DESDE_DEFAULT
 
 
 def _require_env(nombre: str) -> str:
@@ -85,6 +88,21 @@ def _require_env(nombre: str) -> str:
     if not valor:
         raise ConfiguracionError(f"La variable de entorno '{nombre}' es obligatoria. Ver .env.example.")
     return valor
+
+
+def _env_fecha(nombre: str, default: str) -> str:
+    """Fecha 'YYYY-MM-DD' (se escribe como literal en el T-SQL, asi que se valida el formato) y dentro
+    del calendario laboral de scripts_sql/puntualidad/10_calendario.sql."""
+    valor = (os.getenv(nombre) or default).strip()
+    try:
+        fecha = datetime.strptime(valor, "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ConfiguracionError(f"La variable de entorno '{nombre}' debe ser una fecha YYYY-MM-DD: {valor!r}") from exc
+    if fecha < datetime.strptime(mappings.FECHA_DESDE_MINIMA, "%Y-%m-%d").date():
+        raise ConfiguracionError(
+            f"'{nombre}' ({valor}) es anterior al inicio del calendario laboral ({mappings.FECHA_DESDE_MINIMA})."
+        )
+    return fecha.isoformat()
 
 
 def _env_int(nombre: str, default: int) -> int:
@@ -129,4 +147,5 @@ def cargar_configuracion(base_dir: Path) -> Settings:
         espera_reintento_s=_env_int("ESPERA_REINTENTO_S", 300),
         log_dir=base_dir / "logs",
         evidencias_dir=base_dir / "evidencias",
+        fecha_desde=_env_fecha("FECHA_DESDE", mappings.FECHA_DESDE_DEFAULT),
     )

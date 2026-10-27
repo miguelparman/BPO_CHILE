@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import sql
-from mappings import COLUMNAS, TEXTO
+from mappings import COLUMNAS, FECHA_DESDE_DEFAULT, TEXTO
 
 DTSX = Path(r"C:\Desarrollo\CHILE ETL AZURE\CHILE ETL AZURE\CHILE ETL AZURE\SSIS_CL_Puntualidad.dtsx")
 RAIZ = Path(__file__).resolve().parents[2]
@@ -67,7 +67,10 @@ def test_base_de_puntualidad_conserva_las_columnas_y_los_joins_del_original(raiz
     assert seleccion(base).replace("\t,ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) [rid]\n", "") == seleccion(original)
     for on in re.findall(r"ON\n(?:\tx\d\.[^\n]+\n)+", original):
         assert on in base
-    assert "'2025-08-01'" in base
+    # El .dtsx tenia el corte fijo en 2025-08-01; aqui es la marca {{FECHA_DESDE}} (por defecto, ese mismo valor)
+    assert "'2025-08-01'" in original
+    assert "CAST([Fecha/Hora de apertura] AS date) >= '{{FECHA_DESDE}}'" in base
+    assert FECHA_DESDE_DEFAULT == "2025-08-01"
 
 
 @requiere_dtsx

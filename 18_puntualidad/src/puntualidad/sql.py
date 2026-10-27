@@ -11,8 +11,8 @@
   prueba/     solo modo prueba: crea TBL_SLA_PY.
   ajustes/    cambios deliberados respecto del .dtsx: SLA pasa de int a decimal(10,2).
 
-Los scripts de puntualidad/ llevan marcas {{TBL_SLA}}, {{TBL_PUNTUALIDAD}} y
-{{FUENTE}} que se reemplazan por las tablas del Destino.
+Los scripts de puntualidad/ llevan marcas {{TBL_SLA}}, {{TBL_PUNTUALIDAD}},
+{{FUENTE}} y {{FECHA_DESDE}} que se reemplazan por los valores del Destino.
 """
 
 from __future__ import annotations
@@ -55,6 +55,7 @@ def con_marcas(sql: str, destino: Destino, fuente: str | None = None) -> str:
         .replace("{{TBL_SLA}}", destino.tbl_sla)
         .replace("{{TBL_PUNTUALIDAD}}", destino.tbl_puntualidad)
         .replace("{{FUENTE}}", fuente or destino.fuente)
+        .replace("{{FECHA_DESDE}}", destino.fecha_desde)
     )
     if "{{" in sql:
         raise ValueError("Quedaron marcas {{...}} sin reemplazar en el script T-SQL.")

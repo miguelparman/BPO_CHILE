@@ -25,6 +25,10 @@ ESQUEMA = "dbo"
 TABLA_SLA = "TBL_SLA"
 TABLA_PUNTUALIDAD = "TBL_PUNTUALIDAD"
 FUENTE_PUNTUALIDAD = "CL_VISTAS.dbo.VIEW_FACT_SEGUIMIENTO_VOL_GENERAL"
+# Casos con apertura desde esta fecha (el .dtsx lo tenia fijo: WHERE CAST([Fecha/Hora de apertura] AS date) >= '2025-08-01').
+# Configurable con FECHA_DESDE en el .env; el calendario laboral cubre desde 2020-01-02.
+FECHA_DESDE_DEFAULT = "2025-08-01"
+FECHA_DESDE_MINIMA = "2020-01-02"
 TABLA_FESTIVOS = f"[{BD_PUNTUALIDAD}].[{ESQUEMA}].[TBL_CALENDARIO_DIAS_FESTIVOS]"
 
 # Modo prueba: las mismas tablas con este sufijo (no se toca produccion).
@@ -47,20 +51,24 @@ class Destino:
     tbl_sla: str
     tbl_puntualidad: str
     fuente: str = FUENTE_PUNTUALIDAD
+    fecha_desde: str = FECHA_DESDE_DEFAULT  # 'YYYY-MM-DD': casos con apertura desde esta fecha
 
     @property
     def es_prueba(self) -> bool:
         return self.modo == MODO_PRUEBA
 
 
-def destino_para(modo: str) -> Destino:
+def destino_para(modo: str, fecha_desde: str = FECHA_DESDE_DEFAULT) -> Destino:
     if modo == MODO_PRODUCCION:
-        return Destino(modo, _tabla(BD_SLA, TABLA_SLA), _tabla(BD_PUNTUALIDAD, TABLA_PUNTUALIDAD))
+        return Destino(
+            modo, _tabla(BD_SLA, TABLA_SLA), _tabla(BD_PUNTUALIDAD, TABLA_PUNTUALIDAD), fecha_desde=fecha_desde
+        )
     if modo == MODO_PRUEBA:
         return Destino(
             modo,
             _tabla(BD_SLA, TABLA_SLA + SUFIJO_PRUEBA),
             _tabla(BD_PUNTUALIDAD, TABLA_PUNTUALIDAD + SUFIJO_PRUEBA),
+            fecha_desde=fecha_desde,
         )
     raise ValueError(f"Modo desconocido: {modo!r}")
 

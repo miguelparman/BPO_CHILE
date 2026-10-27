@@ -59,6 +59,11 @@ Código de salida: 0 OK; 1 error; con `--equivalencia`, 2 si no resulta equivale
 Copiar `.env.example` como `.env` y completar (SQL Server y App Registration de Graph con `Sites.Selected` sobre
 ReportingFractalia). Ninguna credencial está en el código.
 
+**`FECHA_DESDE`** (`YYYY-MM-DD`, por defecto `2025-08-01`): `TBL_PUNTUALIDAD` incluye los casos con apertura desde esa fecha. En el
+`.dtsx` estaba escrita fija en el T-SQL; ahora se cambia en el `.env`, sin tocar SQL. Se valida el formato y que no sea anterior a
+2020-01-02 (inicio del calendario laboral); una fecha inválida detiene el proceso antes de tocar la base. La corrida la registra en el
+log (`Casos con apertura desde ...`). Cambiarla afecta a la siguiente corrida, incluida la de la tarea programada.
+
 ## Estructura (src layout, modular por componentes)
 
 ```

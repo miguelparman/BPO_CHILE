@@ -101,7 +101,7 @@ def main() -> int:
         return 1
     log_file = configurar_logging(settings.log_dir)
     logger.info("Log de esta corrida: %s", log_file)
-    destino = destino_para(args.destino)
+    destino = destino_para(args.destino, settings.fecha_desde)
     tareas = [_SOLO[s] for s in sorted(args.solo, key=list(_SOLO).index)] if args.solo else [TAREA_SLA, TAREA_PUNTUALIDAD]
     if destino.modo == MODO_PRODUCCION and not (args.solo_validar or args.verificar):
         logger.warning("MODO PRODUCCION: se escribiran %s y %s.", destino.tbl_sla, destino.tbl_puntualidad)

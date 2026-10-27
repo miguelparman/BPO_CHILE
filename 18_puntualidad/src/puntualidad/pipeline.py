@@ -65,6 +65,7 @@ class PuntualidadPipeline:
         resultado = ResultadoCorrida()
         destino = self._loader.destino
         logger.info("Destino (%s): %s | %s", destino.modo.upper(), destino.tbl_sla, destino.tbl_puntualidad)
+        logger.info("Casos con apertura desde %s (FECHA_DESDE).", destino.fecha_desde)
         for tarea in tareas:
             logger.info("=" * 70)
             logger.info("Tarea %s%s", tarea, " (solo validar)" if solo_validar else "")
