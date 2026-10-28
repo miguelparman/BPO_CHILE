@@ -26,7 +26,7 @@ carpeta — sin capas domain/application/infrastructure ni interfaces
 `Protocol` de por medio:
 
 ```
-04_usuarios/
+04_usuarios_y_retenciones/
 ├── README.md, .gitignore, .env.example, requirements*.txt, pyproject.toml
 ├── main.py                       CLI + composition root (--periodo, --paquete)
 ├── tests/unit/                    fakes + tests por capa

@@ -5,7 +5,7 @@ rem   1) 01_servidor_chile
 rem   2) 12_trafico
 rem   3) 13_fcr        (usa el trafico cargado en el paso 2)
 rem   4) 14_EPA_WSP
-rem   5) 04_usuarios   (periodo: PERIODO de su .env)
+rem   5) 04_usuarios_y_retenciones   (periodo: PERIODO de su .env)
 rem Si un paso falla, la consola pregunta si se reintenta (reintentar.cmd) y
 rem espera la respuesta sin limite de tiempo. Si no se reintenta, la cadena
 rem sigue con el paso siguiente.
@@ -19,7 +19,7 @@ set "LOG_CADENA=%RAIZ%\logs\cadena_1030.log"
 set "COMANDO_REINTENTO="%PYTHON%" main.py"
 set "cadena_exit=0"
 
-for %%P in (01_servidor_chile 12_trafico 13_fcr 14_EPA_WSP 04_usuarios) do (
+for %%P in (01_servidor_chile 12_trafico 13_fcr 14_EPA_WSP 04_usuarios_y_retenciones) do (
     call "%~dp0reintentar.cmd" "%%P" "%RAIZ%\%%P" "%RAIZ%\%%P\logs"
     if errorlevel 1 set "cadena_exit=1"
 )
