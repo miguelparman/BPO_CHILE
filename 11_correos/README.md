@@ -240,7 +240,7 @@ Ambos pares de credenciales ya existen y están probados en
 
 - `DB_SERVER` / `DB_NAME` (`CL_MOVIL`) / `DB_USER` / `DB_PASSWORD`: SQL
   Server `172.17.0.162`, destino de bronze/silver/gold. Mismo login
-  `mparedes` ya usado contra ese servidor en `02_ventas`/`04_usuarios`
+  `mparedes` ya usado contra ese servidor en `02_ventas`/`04_usuarios_y_retenciones`
   (bases `CL_USUARIOS`/`CL_DATA`). Probado en vivo (con VPN conectada).
 - `FECHA_INICIO` / `FECHA_FIN`: periodo por defecto de bronze/silver/gold
   (UTC, sobre `FechaHora_UTC_Texto`). Solo fecha

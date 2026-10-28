@@ -52,7 +52,7 @@ def dividir_en_batches(sql: str) -> list[str]:
 def _fila_a_parametros(fila: tuple) -> tuple:
     """Sanea una fila antes de bindearla en pyodbc: NaN/NaT/pd.NA -> None (el
     driver no acepta NaN crudo) y escalares numpy -> tipo nativo de Python
-    (pyodbc no los sabe describir). Mismo helper que 04_usuarios/db.py."""
+    (pyodbc no los sabe describir). Mismo helper que 04_usuarios_y_retenciones/db.py."""
     saneada = []
     for valor in fila:
         if valor is None or (not isinstance(valor, (str, bytes)) and pd.isna(valor)):

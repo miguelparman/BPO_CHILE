@@ -2,7 +2,7 @@ r"""
 SharePointClient: resolucion de Site/Drive, descarga, subida y borrado de
 archivos via Microsoft Graph.
 
-Reutilizado tal cual de 14_EPA_WSP (mismo patron que 04_usuarios, 08_cartera,
+Reutilizado tal cual de 14_EPA_WSP (mismo patron que 04_usuarios_y_retenciones, 08_cartera,
 12_trafico y 30_parque). En 15_Logueo solo se usa download_file: reemplaza la
 lectura del archivo local que hacia el Flat File Connection Manager 'Logueo'
 de Cl_Proc_Logueo.dtsx (...\15 PORTAL COMERCIAL\REPORTE_AGENTES_FRACTALIA_SEM.csv).

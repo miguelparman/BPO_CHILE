@@ -3,7 +3,7 @@ SharePointClient: resolucion de Site/Drive/Item, listado, descarga y subida
 de archivos via Microsoft Graph.
 
 resolve_site/resolve_drive/resolve_default_drive/resolve_folder/download_file
-son el mismo patron ya usado en 01_servidor_chile, 30_parque, 04_usuarios y
+son el mismo patron ya usado en 01_servidor_chile, 30_parque, 04_usuarios_y_retenciones y
 02_ventas. upload_file (subida simple <=4MB / por chunks >4MB) es el mismo
 codigo que 02_ventas/src/ventas/sharepoint/client.py agrego para copiar
 'FUNNEL VENTAS V2.xlsx' entre los tenants 'BPO' y 'ReportingFractalia'.

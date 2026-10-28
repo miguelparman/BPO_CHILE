@@ -29,7 +29,7 @@ dividido en 4 capas que replican 1:1 las etapas del proceso original
 (extracción, validación, transformación, carga), cada una en su propia
 carpeta — sin capas domain/application/infrastructure ni interfaces
 `Protocol` de por medio (mismo patrón plano que `08_cartera`/`30_parque`/
-`04_usuarios`, solo que aquí además separado de la raíz del repo):
+`04_usuarios_y_retenciones`, solo que aquí además separado de la raíz del repo):
 
 ```
 02_ventas/
@@ -327,7 +327,7 @@ pudo validar desde este entorno de desarrollo (sin acceso de red al
 servidor ni credenciales Graph todavía) — queda pendiente para cuando el
 usuario la ejecute con su red/credenciales. Es probable que surjan ajustes
 de ancho de columna u otros detalles de datos reales no visibles en los
-`.dtsx` (mismo patrón que en `30_parque`/`04_usuarios`); ante un error de
+`.dtsx` (mismo patrón que en `30_parque`/`04_usuarios_y_retenciones`); ante un error de
 `String data, right truncation` sin evidencia documentada de truncamiento
 intencional, preferir ampliar la columna destino (`ALTER TABLE`) antes que
 truncar datos.

@@ -2,7 +2,7 @@
 SharePointClient: resolucion de Site/Drive y descarga de archivos via
 Microsoft Graph.
 
-Identico al patron ya usado en 04_usuarios/sharepoint/client.py y
+Identico al patron ya usado en 04_usuarios_y_retenciones/sharepoint/client.py y
 30_parque/sharepoint/client.py (download_file para LEER archivos publicados
 en SharePoint). Aqui reemplaza al Connection Manager Excel 'CARTERA' del
 .dtsx original (antes una ruta local/de red).

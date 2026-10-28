@@ -2,7 +2,7 @@ r"""
 SharePointClient: resolucion de Site/Drive, metadatos y descarga de archivos
 via Microsoft Graph (solo lectura).
 
-Reutilizado de 15_Logueo/16_Gerencia (mismo patron que 04_usuarios,
+Reutilizado de 15_Logueo/16_Gerencia (mismo patron que 04_usuarios_y_retenciones,
 08_cartera, 12_trafico y 30_parque). Reemplaza la lectura de los archivos
 locales ...\BPO - Insumos\Chile\SEGUIMIENTO\Nuevo\*.csv que hacian los Flat
 File Connection Managers de los paquetes CL_Seguimiento_0x.

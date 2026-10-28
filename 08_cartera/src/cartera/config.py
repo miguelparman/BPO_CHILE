@@ -36,7 +36,7 @@ class DbSettings:
 class SharePointSettings:
     """Reemplaza al Connection Manager Excel 'CARTERA': App Registration de
     Microsoft Graph con permiso Sites.Selected sobre el sitio
-    ReportingFractalia. Identico al patron de 04_usuarios/config.py."""
+    ReportingFractalia. Identico al patron de 04_usuarios_y_retenciones/config.py."""
 
     tenant_id: str
     client_id: str

@@ -2,7 +2,7 @@
 SharePointClient: resolucion de Site/Drive, descarga, subida y borrado de
 archivos via Microsoft Graph.
 
-Reutilizado de 12_trafico (mismo patron que 04_usuarios, 08_cartera y
+Reutilizado de 12_trafico (mismo patron que 04_usuarios_y_retenciones, 08_cartera y
 30_parque: download_file para LEER archivos publicados en SharePoint). Aqui
 reemplaza el origen [Externos_Frac] (SQL Server del dominio Chile) que leian
 los scripts Traslado_Calidad_Servidor_55_*.py y enviar_alerta_encuesta.py

@@ -2,7 +2,7 @@ r"""
 SharePointClient: resolucion de Site/Drive, metadatos y descarga de archivos
 via Microsoft Graph (solo lectura).
 
-Reutilizado de 17_seguimiento/08_cartera (mismo patron que 04_usuarios y
+Reutilizado de 17_seguimiento/08_cartera (mismo patron que 04_usuarios_y_retenciones y
 30_parque). Reemplaza la lectura del Excel local
 ...\BPO - Insumos\Chile\INDICADORES CHILE\SLA Puntualidad\DB.xlsx que hacia
 el Connection Manager Excel 'SLA' del paquete SSIS_CL_Puntualidad.

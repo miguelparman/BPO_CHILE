@@ -2,7 +2,7 @@
 Autenticacion contra Microsoft Graph via OAuth 2.0 Client Credentials
 (app-only, sin usuario interactivo).
 
-Identico al patron ya usado en 30_parque, 01_servidor_chile, 04_usuarios y
+Identico al patron ya usado en 30_parque, 01_servidor_chile, 04_usuarios_y_retenciones y
 02_ventas: 'requests' + endpoint v2 de Microsoft identity platform, sin msal
 ni azure-identity, para mantener consistencia con el resto del repositorio.
 """

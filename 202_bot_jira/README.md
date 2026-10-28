@@ -7,7 +7,7 @@ API REST de Jira.
 ## Arquitectura
 
 Capas `domain`/`application`/`infrastructure` (a diferencia del patrón
-plano usado en `02_ventas`/`08_cartera`/`30_parque`/`04_usuarios`):
+plano usado en `02_ventas`/`08_cartera`/`30_parque`/`04_usuarios_y_retenciones`):
 
 ```
 202_bot_jira/

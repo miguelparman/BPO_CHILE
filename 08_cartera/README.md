@@ -86,7 +86,7 @@ HISTORICO CARTERA        ACTUALIZA STATUS -> LIMITA CLIENTES -> LIMPIA TEMPORAL 
 - [ODBC Driver 18 for SQL Server](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)
 - Acceso de red al servidor SQL Server
 - App Registration de Microsoft Graph con `Sites.Selected` sobre el sitio
-  `ReportingFractalia` (mismas credenciales que `04_usuarios`/`30_parque`:
+  `ReportingFractalia` (mismas credenciales que `04_usuarios_y_retenciones`/`30_parque`:
   `TENANT_ID`, `CLIENT_ID`, `CLIENT_SECRET` en `.env`)
 
 ## Instalación

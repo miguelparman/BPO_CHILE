@@ -2,7 +2,7 @@
 SharePointClient: resolucion de Site/Drive y descarga de archivos via
 Microsoft Graph.
 
-Identico al patron ya usado en 04_usuarios, 08_cartera y 30_parque
+Identico al patron ya usado en 04_usuarios_y_retenciones, 08_cartera y 30_parque
 (download_file para LEER archivos publicados en SharePoint). Aqui reemplaza
 el origen [Externos_Frac] (SQL Server del dominio Chile) que leian los 7
 scripts Traslado_Trafico_Servidor_55_*.py llamados por CL_Proc_Trafico_01.dtsx.

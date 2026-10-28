@@ -2,7 +2,7 @@
 Autenticacion contra Microsoft Graph via OAuth 2.0 Client Credentials
 (app-only, sin usuario interactivo).
 
-Identico al patron ya usado en 04_usuarios/sharepoint/auth.py, 30_parque/sharepoint/auth.py,
+Identico al patron ya usado en 04_usuarios_y_retenciones/sharepoint/auth.py, 30_parque/sharepoint/auth.py,
 01_servidor_chile/sharepoint/auth.py y 201_bot_salesforce/app/sharepoint/auth.py:
 'requests' + endpoint v2 de Microsoft identity platform, sin msal ni
 azure-identity, para mantener consistencia con el resto del repositorio.

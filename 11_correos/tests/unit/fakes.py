@@ -1,7 +1,7 @@
 """Dobles de prueba (fakes) para SharePointClient y DatabaseGateway. Permiten
 testear ingesta/bronze/silver/gold sin una conexion Graph/SQL Server
 real, registrando las llamadas para poder aseverar el orden/contenido --
-mismo patron ya usado en 04_usuarios/tests/unit/fakes.py y
+mismo patron ya usado en 04_usuarios_y_retenciones/tests/unit/fakes.py y
 30_parque/tests/unit/fakes.py. No heredan de las clases concretas: Python no
 lo exige (duck typing)."""
 

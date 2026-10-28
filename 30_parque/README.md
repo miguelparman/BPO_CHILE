@@ -24,7 +24,7 @@ La migración se hizo en 2 fases dentro de este mismo proyecto:
 dividido en 4 capas que replican 1:1 las etapas del proceso original
 (extracción, validación, transformación, carga), cada una en su propia
 carpeta — sin capas domain/application/infrastructure ni interfaces
-`Protocol` de por medio (mismo patrón plano que `08_cartera`/`04_usuarios`/
+`Protocol` de por medio (mismo patrón plano que `08_cartera`/`04_usuarios_y_retenciones`/
 `02_ventas`, solo que aquí además separado de la raíz del repo):
 
 ```

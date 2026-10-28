@@ -2,7 +2,7 @@ r"""
 SharePointClient: resolucion de Site/Drive, descarga, subida y borrado de
 archivos via Microsoft Graph.
 
-Reutilizado tal cual de 15_Logueo (mismo patron que 04_usuarios, 08_cartera,
+Reutilizado tal cual de 15_Logueo (mismo patron que 04_usuarios_y_retenciones, 08_cartera,
 12_trafico, 14_EPA_WSP y 30_parque). En 10_campaña_termometro solo se usa
 download_file: reemplaza la lectura de ACTUAL_.xlsx y Reporte_termometros.csv
 desde la carpeta local sincronizada ...\BPO - Insumos\Chile\Campanhas\Termometro.

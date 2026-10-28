@@ -4,7 +4,7 @@ SharePointCsvReader/SharePointExcelReader (sharepoint/reader.py).
 Permiten testear el pipeline sin una base de datos ni una conexion Graph/
 SharePoint reales, registrando las llamadas para poder aseverar el orden/
 contenido -- mismo patron que 30_parque/tests/unit/fakes.py y
-04_usuarios/tests/unit/fakes.py. No heredan de las clases concretas: Python
+04_usuarios_y_retenciones/tests/unit/fakes.py. No heredan de las clases concretas: Python
 no lo exige (duck typing) y evita acoplar los fakes a la implementacion real.
 """
 

@@ -3,7 +3,7 @@ SharePointClient: resolucion de Site/Drive/Item, descarga y subida de
 archivos via Microsoft Graph.
 
 resolve_site/resolve_drive/resolve_folder/resolve_default_drive/download_file
-son el mismo patron ya usado en 01_servidor_chile, 30_parque y 04_usuarios.
+son el mismo patron ya usado en 01_servidor_chile, 30_parque y 04_usuarios_y_retenciones.
 
 upload_file es nuevo aqui: el paso 0 de 02_ventas ('FUNNEL VENTAS V2.xlsx'
 del sitio 'BPO' hacia '07 CROSS' en 'ReportingFractalia') copia el archivo
