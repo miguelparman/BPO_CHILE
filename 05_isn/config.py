@@ -35,6 +35,25 @@ def _default_fecha(offset_dias: int = 1) -> str:
     return (date.today() - timedelta(days=offset_dias)).isoformat()
 
 
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str) -> str:
+    """Devuelve el driver ODBC a usar: el configurado (DB_DRIVER) si esta
+    instalado en esta maquina; si no, el mas nuevo de los instalados. Evita
+    tener que fijar la version en el .env de cada equipo."""
+    import pyodbc
+
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            return candidato
+    return nombre
+
+
 @dataclass(frozen=True)
 class Settings:
     # --- Conexión SQL Server (mismo servidor, 3 bases) ---
@@ -119,7 +138,7 @@ class Settings:
 
     def _odbc_string(self, database: str) -> str:
         return (
-            f"DRIVER={{{self.db_driver}}};"
+            f"DRIVER={{{_resolver_driver(self.db_driver)}}};"
             f"SERVER={self.db_server};"
             f"DATABASE={database};"
             f"UID={self.db_user};PWD={self.db_password};"

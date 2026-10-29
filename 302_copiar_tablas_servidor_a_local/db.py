@@ -39,6 +39,28 @@ _TIPOS_CON_ESCALA_SOLO = {"datetime2", "time", "datetimeoffset"}
 _IDENTIFICADOR_VALIDO = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str) -> str:
+    """Devuelve el driver ODBC a usar: el configurado (DB_DRIVER) si esta
+    instalado en esta maquina; si no, el mas nuevo de los instalados. Evita
+    tener que fijar la version en el .env de cada equipo."""
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            import logging as _logging
+
+            _logging.getLogger(__name__).warning(
+                "Driver ODBC '%s' no instalado; se usa '%s'.", nombre, candidato
+            )
+            return candidato
+    return nombre
+
+
 def crear_conexion(settings: DbSettings) -> pyodbc.Connection:
     """Arma la cadena de conexion: SQL Server (UID/PWD) si 'settings.user'
     esta definido, o Windows integrada (Trusted_Connection) si no lo esta.
@@ -50,7 +72,7 @@ def crear_conexion(settings: DbSettings) -> pyodbc.Connection:
         auth = "Trusted_Connection=yes;"
 
     conn_str = (
-        f"DRIVER={{{settings.driver}}};"
+        f"DRIVER={{{_resolver_driver(settings.driver)}}};"
         f"SERVER={settings.server};"
         f"DATABASE={settings.database};"
         f"{auth}"

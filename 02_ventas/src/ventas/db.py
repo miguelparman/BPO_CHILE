@@ -25,6 +25,28 @@ from exceptions import CargaError
 logger = logging.getLogger("ventas")
 
 
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str) -> str:
+    """Devuelve el driver ODBC a usar: el configurado (DB_DRIVER) si esta
+    instalado en esta maquina; si no, el mas nuevo de los instalados. Evita
+    tener que fijar la version en el .env de cada equipo."""
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            import logging as _logging
+
+            _logging.getLogger(__name__).warning(
+                "Driver ODBC '%s' no instalado; se usa '%s'.", nombre, candidato
+            )
+            return candidato
+    return nombre
+
+
 def _fila_a_parametros(fila: tuple) -> tuple:
     """Sanea una fila (tupla de valores de un DataFrame) antes de bindear los
     parametros del INSERT contra pyodbc:
@@ -50,7 +72,7 @@ def _fila_a_parametros(fila: tuple) -> tuple:
 
 def crear_conexion(settings: DbSettings) -> pyodbc.Connection:
     conn_str = (
-        f"DRIVER={{{settings.driver}}};"
+        f"DRIVER={{{_resolver_driver(settings.driver)}}};"
         f"SERVER={settings.server};"
         f"DATABASE={settings.database};"
         f"UID={settings.user};"
@@ -58,7 +80,13 @@ def crear_conexion(settings: DbSettings) -> pyodbc.Connection:
         f"Encrypt={settings.encrypt};"
         f"TrustServerCertificate={settings.trust_server_certificate}"
     )
-    return pyodbc.connect(conn_str)
+    try:
+        return pyodbc.connect(conn_str)
+    except pyodbc.Error as exc:
+        raise CargaError(
+            f"No se pudo conectar a SQL Server ({settings.server}, driver '{settings.driver}'; "
+            f"drivers instalados: {pyodbc.drivers()}): {exc}"
+        ) from exc
 
 
 class DatabaseGateway:

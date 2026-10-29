@@ -2,6 +2,31 @@ import pyodbc
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().with_name(".env"))
+
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str = "ODBC Driver 17 for SQL Server") -> str:
+    """Devuelve el driver ODBC a usar: el indicado si esta instalado en esta
+    maquina; si no, el mas nuevo de los instalados (varia entre equipos)."""
+    import pyodbc
+
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            return candidato
+    return nombre
+
 BATCH_SIZE = 1000
 
 hoy = datetime.today()
@@ -19,7 +44,7 @@ conn_dest = None
 
 try:
     conn_src = pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};"
+        f"DRIVER={{{_resolver_driver()}}};"
         "SERVER=sqlclu01lis01.tchile.local;"
         "DATABASE=Externos_Frac;"
         "Trusted_Connection=yes;"
@@ -29,11 +54,11 @@ try:
     print("Conexión al servidor Chile exitosa.")
 
     conn_dest = pyodbc.connect(
-        "DRIVER={ODBC Driver 17 for SQL Server};"
+        f"DRIVER={{{_resolver_driver()}}};"
         "SERVER=172.17.0.162;"
         "DATABASE=CL_TEMPORALES;"
-        "UID=palermo.reyes;"
-        "PWD=Fractalia2025%"
+        f"UID={os.environ['DB_USER']};"
+        f"PWD={os.environ['DB_PASSWORD']}"
     )
     print("Conexión al servidor TCH exitosa.")
 

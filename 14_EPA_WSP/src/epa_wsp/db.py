@@ -43,6 +43,28 @@ _GO_RE = re.compile(r"^[ \t]*GO[ \t]*(?:--[^\r\n]*)?\r?$", re.IGNORECASE | re.MU
 _TIPOS_TEXTO = {"varchar", "nvarchar", "char", "nchar"}
 
 
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str) -> str:
+    """Devuelve el driver ODBC a usar: el configurado (DB_DRIVER) si esta
+    instalado en esta maquina; si no, el mas nuevo de los instalados. Evita
+    tener que fijar la version en el .env de cada equipo."""
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            import logging as _logging
+
+            _logging.getLogger(__name__).warning(
+                "Driver ODBC '%s' no instalado; se usa '%s'.", nombre, candidato
+            )
+            return candidato
+    return nombre
+
+
 def dividir_en_batches(sql: str) -> list[str]:
     """Divide un script por sus separadores 'GO', igual que el Execute SQL
     Task. Descarta los batches vacios (p.ej. el que queda tras un GO final)."""
@@ -100,7 +122,7 @@ def crear_conexion(
     prueba, un login puede fallar puntualmente (error 4060) y funcionar al
     segundo intento."""
     conn_str = (
-        f"DRIVER={{{settings.driver}}};"
+        f"DRIVER={{{_resolver_driver(settings.driver)}}};"
         f"SERVER={settings.server};"
         f"DATABASE={settings.database};"
         f"UID={settings.user};"

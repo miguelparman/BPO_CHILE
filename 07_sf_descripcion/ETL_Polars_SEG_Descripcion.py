@@ -6,16 +6,41 @@ from datetime import datetime
 import time
 
 
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().with_name(".env"))
+
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str = "ODBC Driver 17 for SQL Server") -> str:
+    """Devuelve el driver ODBC a usar: el indicado si esta instalado en esta
+    maquina; si no, el mas nuevo de los instalados (varia entre equipos)."""
+    import pyodbc
+
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            return candidato
+    return nombre
+
+
 # ============================================================================
 # CONFIGURACIÓN
 # ============================================================================
 # Configuración de conexión+-
 DB_CONFIG = {
-    'DRIVER': '{ODBC Driver 17 for SQL Server}',
+    'DRIVER': '{' + _resolver_driver() + '}',
     'SERVER': '172.17.0.162',
     'DATABASE': 'CL_TEMPORALES',
-    'UID': 'mparedes',
-    'PWD': 'Abr2024.'
+    'UID': os.environ['DB_USER'],
+    'PWD': os.environ['DB_PASSWORD']
 }
 
 # Rutas y configuraciones
