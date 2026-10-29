@@ -15,6 +15,21 @@ import ctypes.wintypes
 import contextlib
 import pyodbc
 
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str = "ODBC Driver 17 for SQL Server") -> str:
+    """Devuelve el driver ODBC a usar: el indicado si esta instalado en esta
+    maquina; si no, el mas nuevo de los instalados (varia entre equipos)."""
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            return candidato
+    return nombre
+
 
 # ── Win32 constantes ──────────────────────────────────────────────────────────
 LOGON32_LOGON_NEW_CREDENTIALS = 9   # equivalente al flag /netonly
@@ -110,7 +125,7 @@ def conectar_dominio(
     pyodbc.Connection lista para usar
     """
     conn_str = (
-        f"DRIVER={{{driver}}};"
+        f"DRIVER={{{_resolver_driver(driver)}}};"
         f"SERVER={server};"
         f"DATABASE={database};"
         f"Trusted_Connection=yes;"

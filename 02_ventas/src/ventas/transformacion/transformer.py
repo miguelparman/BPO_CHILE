@@ -61,7 +61,7 @@ def _parsear_fechas(original: pd.Series) -> pd.Series:
     texto = original.astype("string").str.strip()
     es_iso = texto.str.match(_PATRON_FECHA_ISO, na=False)
     iso = pd.to_datetime(texto.where(es_iso), errors="coerce", format="ISO8601")
-    local = pd.to_datetime(original.where(~es_iso), errors="coerce", dayfirst=True)
+    local = pd.to_datetime(original.where(~es_iso), errors="coerce", dayfirst=True, format="mixed")
     return iso.where(es_iso, local)
 
 
