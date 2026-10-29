@@ -7,6 +7,24 @@ from pathlib import Path
 import pyodbc
 
 
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str = "ODBC Driver 17 for SQL Server") -> str:
+    """Devuelve el driver ODBC a usar: el indicado si esta instalado en esta
+    maquina; si no, el mas nuevo de los instalados (varia entre equipos)."""
+    import pyodbc
+
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            return candidato
+    return nombre
+
+
 # ============================================================
 # CONFIGURACIÓN DE AZURE SQL
 # ============================================================
@@ -61,7 +79,7 @@ def obtener_conexion():
     """
 
     connection_string = (
-        "DRIVER={ODBC Driver 17 for SQL Server};"
+        f"DRIVER={{{_resolver_driver()}}};"
         f"SERVER={SERVER};"
         f"DATABASE={DATABASE};"
         "Trusted_Connection=yes;"

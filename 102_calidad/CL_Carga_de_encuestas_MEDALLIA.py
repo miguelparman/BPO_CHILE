@@ -2,6 +2,31 @@ import pandas as pd
 import pyodbc
 import numpy as np
 
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().with_name(".env"))
+
+_DRIVERS_PREFERIDOS = ("ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server")
+
+
+def _resolver_driver(configurado: str = "ODBC Driver 17 for SQL Server") -> str:
+    """Devuelve el driver ODBC a usar: el indicado si esta instalado en esta
+    maquina; si no, el mas nuevo de los instalados (varia entre equipos)."""
+    import pyodbc
+
+    instalados = pyodbc.drivers()
+    nombre = configurado.strip().strip("{}")
+    if nombre in instalados:
+        return nombre
+    for candidato in _DRIVERS_PREFERIDOS:
+        if candidato in instalados:
+            return candidato
+    return nombre
+
 # Ruta al archivo CSV
 csv_file = r"D:\IRISCENE ENGINEERING CORPORATION SLU\Data Analytics Reporting Fractalia - Medallia\Encuestas_Medallia.csv"
 
@@ -58,11 +83,11 @@ print("Total de registros leídos:", len(df))
 
 # Conectar a SQL Server
 conn_str = (
-    "DRIVER={ODBC Driver 17 for SQL Server};"
+    f"DRIVER={{{_resolver_driver()}}};"
     "SERVER=172.17.0.162;"
     "DATABASE=CL_TEMPORALES_INDICADORES;"
-    "UID=palermo.reyes;"
-    "PWD=Fractalia2025%"
+    f"UID={os.environ['DB_USER']};"
+    f"PWD={os.environ['DB_PASSWORD']}"
 )
 conn = pyodbc.connect(conn_str)
 conn.autocommit = True
