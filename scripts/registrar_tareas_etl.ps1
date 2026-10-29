@@ -24,36 +24,39 @@
 
 .PARAMETER PedirPassword
     Pide la contrasena de RunAsUser y registra las tareas con "Ejecutar tanto si el
-    usuario inicio sesion como si no". Sin este modo, las tareas solo corren con la
-    sesion de RunAsUser abierta.
+    usuario inicio sesion como si no". Sin este modo (por defecto), las tareas solo
+    corren con la sesion de RunAsUser abierta.
 
 .PARAMETER ActualizarPython
-    Reemplaza, en los .cmd de BasePath, la ruta de python.exe del equipo original por
-    PythonExe.
+    Por defecto $true. Reemplaza, en los .cmd de BasePath, la ruta de python.exe del
+    equipo original por PythonExe. Usar -ActualizarPython $false para omitirlo.
 
 .PARAMETER Reemplazar
-    Sobrescribe las tareas que ya existan. Sin esta opcion se omiten.
+    Por defecto $true. Sobrescribe las tareas que ya existan. Con -Reemplazar $false
+    se omiten.
 
 .PARAMETER SoloDeshabilitar
     No crea nada: deshabilita las tareas de esta lista que existan en TaskPath (para
     usarlo en el equipo original).
 
 .EXAMPLE
-    .\registrar_tareas_etl.ps1 -BasePath 'E:\BPO_CHILE' -PythonExe 'C:\Python312\python.exe' `
-        -RunAsUser 'DOMINIO\svc_etl' -PedirPassword -ActualizarPython -WhatIf
+    .\registrar_tareas_etl.ps1            # usa los valores por defecto del equipo nuevo
+
+.EXAMPLE
+    .\registrar_tareas_etl.ps1 -WhatIf    # simulacion: no crea ni modifica nada
 
 .EXAMPLE
     .\registrar_tareas_etl.ps1 -SoloDeshabilitar
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$BasePath = 'D:\dev\BPO_CHILE',
-    [string]$PythonExe = 'C:\Users\miguel.paredes\AppData\Local\Programs\Python\Python312\python.exe',
+    [string]$BasePath = 'D:\Python ETL\BPO_CHILE',
+    [string]$PythonExe = 'C:\Users\juanjair.macedo\AppData\Local\Programs\Python\Python313\python.exe',
     [string]$TaskPath = '\ETL\',
-    [string]$RunAsUser = "$env:USERDOMAIN\$env:USERNAME",
+    [string]$RunAsUser = 'FRACTALIAGROUP\juanjair.macedo',
     [switch]$PedirPassword,
-    [switch]$ActualizarPython,
-    [switch]$Reemplazar,
+    [bool]$ActualizarPython = $true,
+    [bool]$Reemplazar = $true,
     [switch]$SoloDeshabilitar
 )
 
