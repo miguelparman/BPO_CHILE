@@ -190,7 +190,14 @@ foreach ($t in $tareas) {
 }
 
 Write-Host ''
-Get-ScheduledTask -TaskPath $TaskPath | ForEach-Object {
-    $i = $_ | Get-ScheduledTaskInfo
-    '{0,-42} {1,-9} proxima: {2}' -f $_.TaskName, $_.State, $i.NextRunTime
+# Se consulta tarea por tarea: si otra tarea de TaskPath tiene el XML danado, un listado
+# completo de la carpeta falla (0x80041318) aunque estas tareas esten bien.
+foreach ($t in $tareas) {
+    try {
+        $x = Get-ScheduledTask -TaskPath $TaskPath -TaskName $t.Nombre -ErrorAction Stop
+        $i = $x | Get-ScheduledTaskInfo
+        '{0,-42} {1,-9} proxima: {2}' -f $x.TaskName, $x.State, $i.NextRunTime
+    } catch {
+        '{0,-42} NO ENCONTRADA' -f $t.Nombre
+    }
 }
