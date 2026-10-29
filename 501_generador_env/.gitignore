@@ -1,0 +1,4 @@
+.env
+*.7z
+*.zip
+__pycache__/
