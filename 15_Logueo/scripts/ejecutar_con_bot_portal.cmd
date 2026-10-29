@@ -11,8 +11,9 @@ rem 'Dimensionamiento', con el CSV de agentes ya subido), y si el CSV no se
 rem actualizo el Lookup no inserta nada.
 rem Codigo de salida: 0 solo si ambos terminan OK.
 setlocal
+call "%~dp0..\..\scripts\python_env.cmd"
 
-set "PYTHON=C:\Users\miguel.paredes\AppData\Local\Programs\Python\Python312\python.exe"
+set "PYTHON=%ETL_PYTHON%"
 set "BOT_DIR=%~dp0..\..\203_bot_portal_comercial"
 set "ETL_DIR=%~dp0.."
 if not exist "%ETL_DIR%\logs" mkdir "%ETL_DIR%\logs"

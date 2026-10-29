@@ -16,8 +16,8 @@
 
 .PARAMETER PythonExe
     python.exe del equipo nuevo. Lo usan directamente las tareas "ETL Trafico ..."; los
-    .cmd de las demas tareas traen escrita la ruta del equipo original (ver
-    -ActualizarPython).
+    .cmd de las demas tareas lo leen de scripts\python.local.cmd, que este script
+    escribe (archivo local, ignorado por git; ver scripts\python_env.cmd).
 
 .PARAMETER RunAsUser
     Cuenta con la que correran las tareas (por defecto, el usuario que ejecuta el script).
@@ -26,10 +26,6 @@
     Pide la contrasena de RunAsUser y registra las tareas con "Ejecutar tanto si el
     usuario inicio sesion como si no". Sin este modo (por defecto), las tareas solo
     corren con la sesion de RunAsUser abierta.
-
-.PARAMETER ActualizarPython
-    Por defecto $true. Reemplaza, en los .cmd de BasePath, la ruta de python.exe del
-    equipo original por PythonExe. Usar -ActualizarPython $false para omitirlo.
 
 .PARAMETER Reemplazar
     Por defecto $true. Sobrescribe las tareas que ya existan. Con -Reemplazar $false
@@ -55,13 +51,11 @@ param(
     [string]$TaskPath = '\ETL\',
     [string]$RunAsUser = 'FRACTALIAGROUP\juanjair.macedo',
     [switch]$PedirPassword,
-    [bool]$ActualizarPython = $true,
     [bool]$Reemplazar = $true,
     [switch]$SoloDeshabilitar
 )
 
 $ErrorActionPreference = 'Stop'
-$PythonOriginal = 'C:\Users\miguel.paredes\AppData\Local\Programs\Python\Python312\python.exe'
 $BasePath = $BasePath.TrimEnd('\')
 if (-not $TaskPath.EndsWith('\')) { $TaskPath += '\' }
 $termometro = '10_campa' + [char]0x00F1 + 'a_termometro'   # carpeta con enie, sin acentos en este archivo
@@ -157,17 +151,16 @@ if ($PedirPassword) {
     $logonType = 'Password'
 }
 
-# --- Ruta de python.exe dentro de los .cmd -------------------------------------------
-if ($ActualizarPython) {
-    Get-ChildItem $BasePath -Recurse -Filter *.cmd -File |
-        Where-Object { $_.FullName -notmatch '\\(\.venv|venv|node_modules)\\' } |
-        ForEach-Object {
-            $txt = [IO.File]::ReadAllText($_.FullName)
-            if ($txt.Contains($PythonOriginal) -and $PSCmdlet.ShouldProcess($_.FullName, "Cambiar ruta de python.exe por $PythonExe")) {
-                [IO.File]::WriteAllText($_.FullName, $txt.Replace($PythonOriginal, $PythonExe), (New-Object Text.UTF8Encoding($false)))
-                Write-Host "[python actualizado] $($_.FullName)"
-            }
-        }
+# --- Ruta de python.exe para los .cmd -------------------------------------------------
+# Los .cmd leen ETL_PYTHON desde scripts\python_env.cmd, que a su vez busca
+# scripts\python.local.cmd (archivo local, ignorado por git).
+$archivoLocal = Join-Path $BasePath 'scripts\python.local.cmd'
+if (-not (Test-Path (Join-Path $BasePath 'scripts\python_env.cmd'))) {
+    Write-Warning "Falta $BasePath\scripts\python_env.cmd: haz git pull; sin el, los .cmd usaran la ruta de Python de otro equipo."
+}
+if ($PSCmdlet.ShouldProcess($archivoLocal, "Escribir ETL_PYTHON=$PythonExe")) {
+    [IO.File]::WriteAllText($archivoLocal, "set `"ETL_PYTHON=$PythonExe`"`r`n", (New-Object Text.UTF8Encoding($false)))
+    Write-Host "[python] $archivoLocal -> $PythonExe"
 }
 
 # --- Registro de tareas --------------------------------------------------------------

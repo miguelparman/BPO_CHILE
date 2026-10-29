@@ -11,8 +11,9 @@ rem espera la respuesta sin limite de tiempo. Si no se reintenta, la cadena
 rem sigue con el paso siguiente.
 rem Codigo de salida: 0 si todos terminan OK; si alguno falla, 1.
 setlocal
+call "%~dp0python_env.cmd"
 
-set "PYTHON=C:\Users\miguel.paredes\AppData\Local\Programs\Python\Python312\python.exe"
+set "PYTHON=%ETL_PYTHON%"
 set "RAIZ=%~dp0.."
 if not exist "%RAIZ%\logs" mkdir "%RAIZ%\logs"
 set "LOG_CADENA=%RAIZ%\logs\cadena_1030.log"

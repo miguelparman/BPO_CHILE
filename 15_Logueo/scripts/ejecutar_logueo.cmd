@@ -1,8 +1,9 @@
 @echo off
 setlocal
+call "%~dp0..\..\scripts\python_env.cmd"
 
 pushd "%~dp0.."
-"C:\Users\miguel.paredes\AppData\Local\Programs\Python\Python312\python.exe" main.py %*
+"%ETL_PYTHON%" main.py %*
 set "exit_code=%ERRORLEVEL%"
 popd
 

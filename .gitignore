@@ -9,3 +9,6 @@ Basurero/
 Migrar/
 
 ~$*
+
+# Ruta de python.exe propia de cada equipo (la escribe registrar_tareas_etl.ps1)
+scripts/python.local.cmd
