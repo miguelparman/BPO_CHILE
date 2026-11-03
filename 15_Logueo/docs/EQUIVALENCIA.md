@@ -10,7 +10,7 @@ Este documento muestra cómo cada elemento del paquete original se reproduce en 
 | 2 | `Package\LOGUEO CHILE\CARGA TABLA` | Data Flow | `LogueoPipeline._carga_tabla` | Ver §2 |
 | 3 | `Package\LOGUEO CHILE\AGREGA DNI` | Execute SQL | `LogueoLoader.agregar_dni` → `scripts_sql/20_agrega_dni.sql` | `? = User::Periodo` (tipo 131 → `Decimal`) |
 | 4 | `Package\Log Fin` | Execute SQL | `LogueoLoader.log_fin` → `scripts_sql/30_log_fin.sql` | UPDATE `'OK'` |
-| 5 | `Package\SP` | Execute SQL | `LogueoLoader.sp_logueo` → `scripts_sql/40_sp_logueo.sql` | `EXEC [CL_LOGUEO].[dbo].[SP_LOGUEO]` |
+| 5 | `Package\SP` | Execute SQL | `LogueoLoader.sp_logueo` → `scripts_sql/40_sp_logueo.sql` | Ejecuta el cuerpo de `SP_LOGUEO` con un cambio (ver «Reingresos duplicados» abajo); antes era `EXEC [CL_LOGUEO].[dbo].[SP_LOGUEO]` |
 | 6 | `Package\BK` | Execute SQL | **no se migra** | Está deshabilitada en el .dtsx (`DTS:Disabled="True"`). Su SQL queda en `docs/BK_deshabilitado_no_migrado.sql`. |
 
 - **Orden de ejecución:** los pasos van en serie, en el orden de las Precedence Constraints.
@@ -84,3 +84,17 @@ El paquete leía `D:\…\15 PORTAL COMERCIAL\REPORTE_AGENTES_FRACTALIA_SEM.csv` 
 - **Causa:** el SP deduplica con `ROW_NUMBER() OVER (PARTITION BY AÑO,MES,DIA,HORA,[ID CONEXION],[DNI] ORDER BY dia)`. `dia` es constante dentro de la partición y `TBL_CONEXIONES` es un heap.
 - **Efecto:** en 36 particiones históricas (de 20240131 a 20260107) los duplicados tienen métricas distintas, y la fila elegida cambia de una ejecución a otra, también entre dos ejecuciones de SSIS.
 - **Solución posible:** corregirlo en el SP (agregar un desempate determinista al `ORDER BY`). Queda fuera del alcance de esta migración.
+
+### Reingresos duplicados en `TBL_PERSONAL_CONSOLIDADO` (2026-11-03, a pedido del usuario)
+
+`[BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO]` puede traer dos filas para el mismo `(DNI, Periodo)` (reingresos; hoy
+solo DNI 74224906, periodo 202610) y el usuario pidió no tocar esa tabla. En `SP_LOGUEO` el `LEFT JOIN` de
+`TEMP_HORA_PROGRAMADAS_CHILE` duplicaba los tramos de horario de ese DNI (924 filas en vez de 462) y por tanto `Hr_Prog`.
+No llegaba a `TBL_LOGUEO_CHILE` porque ese DNI no tiene logueo, pero se corrigió de forma preventiva.
+
+- **Cambio:** `scripts_sql/40_sp_logueo.sql` ya no hace `EXEC SP_LOGUEO`: contiene el cuerpo del SP y ese `JOIN` lee una
+  sola fila por `(DNI, Periodo)` (la de `[Fecha Ingreso a la Empresa]` más reciente). La tabla real no se modifica.
+- **Prueba (2026-11-03):** el script corrió en 56,6 s con `LOGS_PROCESOS` en `'OK'`; `TBL_LOGUEO_CHILE` (229.874 filas,
+  suma de `Hr_Prog` 1.082.031,5) y `TBL_LOGUEO_CHILE_TRAMOS` (3.283.534 filas) quedaron igual.
+- **Ojo:** `SP_LOGUEO` sigue en SQL Server sin este cambio; si se modifica allí, replicarlo en el script. La definición
+  original queda en `docs/referencia_sp/SP_LOGUEO.sql`.

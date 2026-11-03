@@ -103,8 +103,9 @@ de cada `.dtsx`, incluido el destino de Nombre Contacto que ahora entra por el c
 | 07 | BK (BACKUP DATABASE ×3) | Deshabilitada | `docs/no_migrado/p07_BK_deshabilitada.sql` |
 | 07 | CARGA ESPEJO AZURE | Deshabilitada | — |
 
-Los SP (`SP_INSUMOS_SEGUIMIENTO`, `SP_ASESOR_RESPONSABLE`, `SP_PROCESO_SEGUIMIENTO`, `SP_FOLIOS_NC`) siguen en SQL
-Server. Su definición queda como referencia en `docs/referencia_sp/`.
+Los SP (`SP_INSUMOS_SEGUIMIENTO`, `SP_PROCESO_SEGUIMIENTO`, `SP_FOLIOS_NC`) siguen en SQL Server. Su definición queda
+como referencia en `docs/referencia_sp/`. **`SP_ASESOR_RESPONSABLE` ya no se invoca:** su cuerpo corre desde
+`scripts_sql/p07/30_asesor_responsable.sql` (ver §13); en `docs/referencia_sp/` queda la definición original.
 
 ## 6. Otras decisiones técnicas
 
@@ -330,3 +331,30 @@ cada fila de Python ya esté idéntica (Solo Python = 0) y que el MERGE de Pytho
 insertado.
 
 El detalle con datos está en `evidencias/` (en `.gitignore` porque contiene RUT).
+
+## 13. Reingresos duplicados en `TBL_PERSONAL_CONSOLIDADO` (2026-11-03, a pedido del usuario)
+
+**Problema.** El 2026-11-03 `ASESOR RESPONSABLE` falló con `Números de casos duplicados` (error 50000 que lanza
+`SP_ASESOR_RESPONSABLE`). `[BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO]` trae dos filas para el mismo
+`(DNI, Periodo)` cuando hay un reingreso (DNI 74224906, periodo 202610: ingreso 2026-09-28 con baja 2026-10-09 y
+reingreso 2026-10-30). El `LEFT JOIN` por DNI y periodo duplicaba los casos en `TBL_ASESOR_RESPONSABLE`.
+
+**Decisión del usuario.** No se toca esa tabla: los duplicados seguirán apareciendo. La solución va en el proyecto.
+(Se había escrito `tools/corregir_personal_duplicado.py`, que borraba la fila sobrante; se aplicó el 2026-11-02 y se
+eliminó el 2026-11-03.)
+
+**Solución.** `scripts_sql/p07/30_asesor_responsable.sql` ya no hace `EXEC SP_ASESOR_RESPONSABLE`: contiene el cuerpo
+del SP, con un solo cambio. Al inicio crea `#PERSONAL_CONSOLIDADO_UNICO` (una fila por `(DNI, Periodo)`, la de
+`[Fecha Ingreso a la Empresa]` más reciente, o sea el reingreso) y las 12 referencias a `TBL_PERSONAL_CONSOLIDADO`
+leen esa copia. Al final se borra la `#temporal`. La tabla real no se modifica.
+
+**Prueba.** Paquete 07 completo el 2026-11-03 08:49: 9 tareas, 0 advertencias; `ASESOR RESPONSABLE` generó 45.889
+filas en 15,5 s.
+
+**Ojo.** `SP_ASESOR_RESPONSABLE` sigue existiendo en SQL Server sin este cambio. Si se modifica allí, hay que replicar
+el cambio en el script del proyecto (y al revés).
+
+**Otros proyectos de BPO_CHILE** que unen esa tabla (revisado el 2026-11-03, solo lectura): con los datos de hoy no
+cambia ningún resultado. `15_Logueo` duplicaba tramos internamente (sin llegar a la salida) y se corrigió igual;
+`14_EPA_WSP` no tiene ese DNI en sus tablas de salida; `19_places` y `SP_INSUMOS_SEGUIMIENTO` ya deduplican;
+`SP_PROCESO_SEGUIMIENTO` solo se afectaría con un duplicado en el periodo actual y un DNI de la cartera.
