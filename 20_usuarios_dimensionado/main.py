@@ -25,7 +25,7 @@ _mostrar_proyecto()
 # ===========================================
 # Archivos
 # ===========================================
-archivo_origen = r"D:\IRISCENE ENGINEERING CORPORATION SLU\Repositorio Bi - Reporting_BPO\BPO_Chile\9. Dimensionamiento_y_Programación\202610\05. Dimensionado y Programación - Llamadas Usuarios Chile del 26 de octubre al 01 de noviembre del 2026 - PPP.xlsx"
+archivo_origen = r"D:\IRISCENE ENGINEERING CORPORATION SLU\Repositorio Bi - Reporting_BPO\BPO_Chile\9. Dimensionamiento_y_Programación\202611\05. Dimensionado y Programación - Llamadas Usuarios Chile del 02 al 08 de noviembre 2026 - PPP.xlsx"
 
 archivo_destino = r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\DIMENSIONADO\Dimensionado y Programación.xlsx"
 
