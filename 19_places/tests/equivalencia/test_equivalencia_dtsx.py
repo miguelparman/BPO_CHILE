@@ -102,7 +102,8 @@ def test_no_hay_script_tasks_ni_archivos_py(raiz):
     "tarea, esperado",
     [
         ("Package\\CARGA PLACES\\TRUNCA TABLA", mappings.SQL_TRUNCATE),
-        ("Package\\CARGA PLACES\\LIMPIA TABLA", mappings.SQL_LIMPIA),
+        # unicas diferencias con el .dtsx: desempate y PARTITION BY CAST(DNI AS INT) del ROW_NUMBER (ver mappings.py)
+        ("Package\\CARGA PLACES\\LIMPIA TABLA", mappings.SQL_LIMPIA.replace(mappings.DESEMPATE_PERSONAL, "").replace("PARTITION BY CAST(DNI AS INT)", "PARTITION BY DNI")),
         ("Package\\CARGA PLACES HISTORICO\\ELIMINA FECHA ACTUAL TABLA", mappings.SQL_HISTORICO_ELIMINA),
         ("Package\\CARGA PLACES HISTORICO\\CARGA TABLA", mappings.SQL_HISTORICO_INSERTA),
         ("Package\\Log Inicio", mappings.SQL_LOG_INICIO),

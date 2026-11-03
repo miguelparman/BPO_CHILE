@@ -27,6 +27,15 @@ Excel Source: todas las columnas `DT_WSTR(255)`. Conversión: `DT_STR` code page
 2. **Validación previa.** Antes de cualquier escritura se revisan los puntos `FailComponent` (SSIS falla a mitad de la carga, con la tabla ya truncada).
 3. **Conexiones.** Si SQL Server o Graph no responden tras 3 reintentos cada 5 min, no se ejecuta nada (SSIS fallaría a mitad del flujo).
 4. **Fuente del Excel.** Ruta física → Microsoft Graph.
+5. **`LIMPIA TABLA`: una sola fila de personal por persona (2026-11-03, a pedido del usuario).** `TBL_PERSONAL_CONSOLIDADO` puede
+   traer filas repetidas y no se modifica. Dos cambios en el `ROW_NUMBER` del `UPDATE` (`mappings.DESEMPATE_PERSONAL` y
+   `PARTITION BY CAST(DNI AS INT)`); son lo único distinto del T-SQL del .dtsx y el test de equivalencia lo contempla:
+   - *Desempate:* dos filas del mismo `(DNI, Periodo)` (reingresos, p. ej. DNI 74224906, periodo 202610) dejaban la elegida
+     al azar; ahora gana la de `[Fecha Ingreso a la Empresa]` más reciente.
+   - *Ceros a la izquierda:* un mismo DNI aparece con distinto relleno (`02674760` / `002674760`) y el `JOIN` compara por
+     `CAST(... AS INT)`; se obtenían 205 filas para 203 Places (51030017 y 51030082) y el `UPDATE` tomaba una al azar.
+   - *Prueba (solo lectura, datos de 2026-11-03):* con el cambio el cruce da 203 filas y ninguna combinación
+     `(ID, ingreso, baja)` distinta de las que daba antes. No se reejecutó el paquete.
 
 ## Comportamientos del original que se mantienen tal cual
 

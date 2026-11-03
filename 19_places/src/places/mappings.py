@@ -65,6 +65,12 @@ COLUMNAS_LIMPIA: tuple[str, ...] = ("Fecha Ingeso Empresa", "Fecha Baja Empresa"
 # --- Execute SQL Tasks: T-SQL literal del .dtsx -------------------------------------------------
 SQL_TRUNCATE = "TRUNCATE TABLE [CL_DATA].[dbo].[TBL_PLACES]"
 
+# Unicos cambios respecto del .dtsx, ambos en el ROW_NUMBER de PERSONAL_CONSOLIDADO (que puede traer filas repetidas):
+#  - desempate (DESEMPATE_PERSONAL): dos filas del mismo (DNI, Periodo) por reingreso; se queda con el ingreso mas reciente.
+#  - PARTITION BY CAST(DNI AS INT): un mismo DNI figura con distinto relleno de ceros ('02674760' / '002674760') y el JOIN
+#    compara por CAST(... AS INT), asi que traia dos filas por Place y el UPDATE elegia una al azar.
+DESEMPATE_PERSONAL = ", [Fecha Ingreso a la Empresa] DESC"
+
 SQL_LIMPIA = """DELETE FROM [CL_DATA].[dbo].[TBL_PLACES]
 WHERE ID IS NULL
 
@@ -79,7 +85,7 @@ DNI=X1.DNI,
 [Fecha Ingeso Empresa]=CONVERT(VARCHAR(8),X1.[Fecha Ingreso a la Empresa],112),
 [Fecha Baja Empresa]= CASE WHEN x1.[Fecha de Baja] is not null then CONVERT(VARCHAR(8),x1.[Fecha de Baja],112) ELSE CONVERT(VARCHAR(8),GETDATE(),112) END
 FROM [CL_DATA].[dbo].[TBL_PLACES] X0
-LEFT JOIN (SELECT XA.* FROM(SELECT *,ROW_NUMBER() OVER(PARTITION BY DNI ORDER BY PERIODO DESC)Orden
+LEFT JOIN (SELECT XA.* FROM(SELECT *,ROW_NUMBER() OVER(PARTITION BY CAST(DNI AS INT) ORDER BY PERIODO DESC, [Fecha Ingreso a la Empresa] DESC)Orden
 FROM [BBDD_GENERAL].[dbo].[TBL_PERSONAL_CONSOLIDADO])XA WHERE Orden = 1) X1
 ON CAST(X0.DNI AS INT) = CAST(X1.DNI AS INT)
 
