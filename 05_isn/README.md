@@ -164,7 +164,7 @@ Se recomienda correr esta prueba contra 2-3 períodos distintos antes de apagar 
 ```bash
 ./scripts/setup_test_env.sh
 cp infra/.env.test .env
-python main.py --saltar isn
+python main.py --saltar isn   # .env.test define CONTACTOS_CSV_MUESTRA: lee el CSV sintetico local, sin Graph
 python scripts/check_test_results.py
 ```
 

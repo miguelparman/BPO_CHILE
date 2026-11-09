@@ -9,6 +9,7 @@ mapeo es posicional y no por nombre de cabecera).
 """
 from __future__ import annotations
 
+import io
 import logging
 from pathlib import Path
 
@@ -17,15 +18,22 @@ import pandas as pd
 from config import settings
 from contactos.columns import COLUMNAS_ORIGEN, TABLA_DESTINO
 from db import get_engine
+from sharepoint.descarga import descargar_archivo
 
 logger = logging.getLogger(__name__)
 
 
-def leer_csv_contactos(path: Path | None = None) -> pd.DataFrame:
-    path = path or settings.csv_contactos_path
-    logger.info("Leyendo CSV de contactos autorizados: %s", path)
+def leer_csv_contactos(contenido: bytes | None = None) -> pd.DataFrame:
+    """Lee el CSV desde SharePoint (Graph); `contenido` permite inyectar bytes en pruebas."""
+    path = settings.sp_contactos_nombre
+    if contenido is None:
+        if settings.contactos_csv_muestra:  # solo ambiente de pruebas (infra/.env.test)
+            logger.info("Leyendo CSV de muestra local (modo prueba): %s", settings.contactos_csv_muestra)
+            contenido = Path(settings.contactos_csv_muestra).read_bytes()
+        else:
+            contenido = descargar_archivo(path, settings.sp_contactos_folder_path)
     df = pd.read_csv(
-        path,
+        io.BytesIO(contenido),
         sep=settings.csv_contactos_delimiter,
         encoding=settings.csv_contactos_encoding,
         quotechar='"',

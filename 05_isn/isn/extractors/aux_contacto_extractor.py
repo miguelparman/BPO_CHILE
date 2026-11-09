@@ -4,22 +4,25 @@ Flow "TBL_ISN_AUX_CONTACTO 1\\TBL_ISN_AUX_CONTACTO".
 """
 from __future__ import annotations
 
+import io
 import logging
-from pathlib import Path
 
 import pandas as pd
 
 from config import settings
+from sharepoint.descarga import descargar_archivo
 from isn.columns import COLUMNAS_AUX_CONTACTO
 
 logger = logging.getLogger(__name__)
 
 
-def leer_aux_contacto(path: Path | None = None) -> pd.DataFrame:
-    path = path or settings.csv_isn_aux_contacto_path
-    logger.info("Leyendo CSV auxiliar de contacto: %s", path)
+def leer_aux_contacto(contenido: bytes | None = None) -> pd.DataFrame:
+    """Lee el CSV desde SharePoint (Graph); `contenido` permite inyectar bytes en pruebas."""
+    if contenido is None:
+        contenido = descargar_archivo(settings.sp_aux_contacto_nombre)
+    path = settings.sp_aux_contacto_nombre
     df = pd.read_csv(
-        path,
+        io.BytesIO(contenido),
         sep=",",
         encoding=settings.csv_isn_encoding,
         quotechar='"',

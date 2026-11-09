@@ -4,22 +4,25 @@ Reemplaza Microsoft.FlatFileSource "Reporte_isn_aux_cliente_v2" del Data Flow
 """
 from __future__ import annotations
 
+import io
 import logging
-from pathlib import Path
 
 import pandas as pd
 
 from config import settings
+from sharepoint.descarga import descargar_archivo
 from isn.columns import COLUMNAS_AUX_CLIENTE
 
 logger = logging.getLogger(__name__)
 
 
-def leer_aux_cliente(path: Path | None = None) -> pd.DataFrame:
-    path = path or settings.csv_isn_aux_cliente_path
-    logger.info("Leyendo CSV auxiliar de cliente: %s", path)
+def leer_aux_cliente(contenido: bytes | None = None) -> pd.DataFrame:
+    """Lee el CSV desde SharePoint (Graph); `contenido` permite inyectar bytes en pruebas."""
+    if contenido is None:
+        contenido = descargar_archivo(settings.sp_aux_cliente_nombre)
+    path = settings.sp_aux_cliente_nombre
     df = pd.read_csv(
-        path,
+        io.BytesIO(contenido),
         sep=",",
         encoding=settings.csv_isn_encoding,
         quotechar='"',

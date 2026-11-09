@@ -67,14 +67,14 @@ class Settings:
     db_database_calidad: str = os.getenv("DB_DATABASE_CALIDAD", "CL_CALIDAD")
 
     # --- Contactos: Connection Manager FLATFILE "Reporte_Contactos_Salesforce_BI" ---
-    csv_contactos_path: Path = field(
-        default_factory=lambda: Path(
-            os.getenv(
-                "CSV_CONTACTOS_PATH",
-                r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\Reporte Contactos Salesforce BI\Reporte_Contactos_Salesforce_BI.csv",
-            )
-        )
+    # Ya NO se lee de ruta local: se descarga por Microsoft Graph (carpeta '11 CONTACTOS').
+    sp_contactos_folder_path: str = os.getenv(
+        "SP_CONTACTOS_FOLDER_PATH", "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/11 CONTACTOS"
     )
+    sp_contactos_nombre: str = os.getenv("SP_CONTACTOS_NOMBRE", "Reporte_Contactos_Salesforce_BI.csv")
+    # SOLO ambiente de pruebas (infra/.env.test): si se define, el CSV de contactos se lee de
+    # este archivo local de muestra en vez de Graph. En produccion debe quedar vacio.
+    contactos_csv_muestra: str = os.getenv("CONTACTOS_CSV_MUESTRA", "")
     # El .dtsx declara CodePage=1252, pero el archivo real (verificado) trae
     # al menos un byte fuera de rango para cp1252 estricto (0x8d, en algún
     # campo de texto libre) -- igual que el hallazgo ya documentado en
@@ -92,22 +92,10 @@ class Settings:
             )
         )
     )
-    csv_isn_aux_cliente_path: Path = field(
-        default_factory=lambda: Path(
-            os.getenv(
-                "CSV_ISN_AUX_CLIENTE_PATH",
-                r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\ISN\Aux_cliente\Reporte_isn_aux_cliente.csv",
-            )
-        )
-    )
-    csv_isn_aux_contacto_path: Path = field(
-        default_factory=lambda: Path(
-            os.getenv(
-                "CSV_ISN_AUX_CONTACTO_PATH",
-                r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\ISN\Aux_contacto\Reporte_isn_aux_contacto.csv",
-            )
-        )
-    )
+    # Aux cliente / aux contacto: ya NO se leen de rutas locales; se descargan por
+    # Microsoft Graph desde el SharePoint 'ReportingFractalia' (ver sp_* abajo).
+    sp_aux_cliente_nombre: str = os.getenv("SP_AUX_CLIENTE_NOMBRE", "Reporte_isn_aux_cliente.csv")
+    sp_aux_contacto_nombre: str = os.getenv("SP_AUX_CONTACTO_NOMBRE", "Reporte_isn_aux_contacto.csv")
     # Mismo hallazgo que en csv_contactos_encoding: cp1252 estricto puede
     # fallar con bytes fuera de rango en estos reportes; latin-1 es más
     # tolerante y se usa como default (confirmar si aparecen tildes mal
@@ -133,6 +121,17 @@ class Settings:
     # --- ISN: variables User::Fecha_inicio / User::Fecha_fin (rango a evaluar en TBL_ISN_SF) ---
     fecha_inicio: str = os.getenv("FECHA_INICIO", _default_fecha())
     fecha_fin: str = os.getenv("FECHA_FIN", _default_fecha())
+
+    # --- Microsoft Graph / SharePoint 'ReportingFractalia' (App Registration, client credentials,
+    # permiso Sites.Selected). Mismo patron que 02_ventas. Sin defaults para credenciales. ---
+    sp_tenant_id: str = os.getenv("TENANT_ID", "")
+    sp_client_id: str = os.getenv("CLIENT_ID", "")
+    sp_client_secret: str = os.getenv("CLIENT_SECRET", "")
+    sp_timeout_ms: int = int(os.getenv("GRAPH_TIMEOUT", "120000"))
+    sp_hostname: str = os.getenv("SHAREPOINT_HOSTNAME", "fractaliagroup.sharepoint.com")
+    sp_site_path: str = os.getenv("SHAREPOINT_SITE_PATH", "/sites/ReportingFractalia")
+    sp_drive_name: str = os.getenv("SHAREPOINT_DRIVE_NAME", "Data Reporting")
+    sp_folder_path: str = os.getenv("SHAREPOINT_FOLDER_PATH", "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/10 ISN")
 
     log_dir: Path = field(default_factory=lambda: BASE_DIR / "logs")
 
