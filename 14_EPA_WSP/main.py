@@ -35,6 +35,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -44,6 +45,7 @@ from config import cargar_configuracion  # noqa: E402
 from db import DatabaseGateway, crear_conexion  # noqa: E402
 from exceptions import ContrasenaMedalliaCaducadaError, EpaWspError, PipelineError  # noqa: E402
 from logging_setup import NOMBRE_LOGGER, configurar_logging  # noqa: E402
+from notificacion import enviar_aviso_fallo  # noqa: E402
 from pipeline import EpaWspPipeline  # noqa: E402
 from sharepoint.auth import GraphAuthError, get_graph_token  # noqa: E402
 from sharepoint.carpeta import CarpetaSharePoint  # noqa: E402
@@ -67,6 +69,16 @@ def _avisar_contrasena_medallia_caducada(usuario: str, url_login: str) -> None:
         "  3) Volver a ejecutar: python main.py\n"
         "%s",
         linea, usuario, url_login, linea,
+    )
+
+
+def _avisar_por_correo(settings, detalle: str) -> None:
+    """Correo de aviso de fallo (si MAIL_REMITENTE / MAIL_DESTINATARIOS estan configurados).
+    No rompe el proceso si el envio falla."""
+    enviar_aviso_fallo(
+        settings.mail,
+        f"[EPA_WSP] FALLO del proceso {datetime.now():%Y-%m-%d %H:%M}",
+        f"El proceso 14_EPA_WSP termino con errores.\n\n{detalle}\n\nRevisar el log de la corrida en la carpeta logs/.",
     )
 
 
@@ -119,11 +131,15 @@ def main() -> int:
             logger.error("Paso fallido: %s -> %s", paso, error)
         if resultado.medallia_contrasena_caducada:
             _avisar_contrasena_medallia_caducada(settings.medallia.usuario, settings.medallia.url_login)
+        if not resultado.exitoso and not args.solo_validar:
+            detalle = "\n".join(f"- {paso}: {error}" for paso, error in resultado.pasos_fallidos)
+            _avisar_por_correo(settings, detalle or str(resultado))
         return 0 if resultado.exitoso else 1
 
     except PipelineError as exc:
         logger.error("Error durante el proceso EPA/WSP: %s", exc)
         logger.exception("Detalle del error:")
+        _avisar_por_correo(settings, f"Error durante el proceso: {exc}")
         if isinstance(exc.causa, ContrasenaMedalliaCaducadaError):  # --estricto
             _avisar_contrasena_medallia_caducada(exc.causa.usuario, exc.causa.url_login)
         return 1
@@ -133,8 +149,9 @@ def main() -> int:
     except EpaWspError as exc:
         logger.error("Error: %s", exc)
         return 1
-    except Exception:  # noqa: BLE001 - p.ej. pyodbc.Error al conectar a SQL Server
+    except Exception as exc:  # noqa: BLE001 - p.ej. pyodbc.Error al conectar a SQL Server
         logger.exception("Error inesperado:")
+        _avisar_por_correo(settings, f"Error inesperado: {exc}")
         return 1
     finally:
         db_indicadores.cerrar()

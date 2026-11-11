@@ -82,6 +82,24 @@ class AlertaSettings:
 
 
 @dataclass(frozen=True)
+class MailSettings:
+    """Aviso por correo (SMTP) cuando falla el proceso (ver notificacion.py).
+    Desactivado si falta el servidor, el remitente o los destinatarios."""
+
+    servidor: str = ""
+    puerto: int = 587
+    starttls: bool = True
+    usuario: str = ""  # vacio = sin autenticacion (relay interno)
+    password: str = ""
+    remitente: str = ""
+    destinatarios: tuple[str, ...] = ()
+
+    @property
+    def activo(self) -> bool:
+        return bool(self.servidor and self.remitente and self.destinatarios)
+
+
+@dataclass(frozen=True)
 class MedalliaSettings:
     """Parametros de CL_Descarga_encuestas_Medallia.py y
     CL_Carga_de_encuestas_MEDALLIA.py (antes constantes en los scripts)."""
@@ -108,6 +126,7 @@ class Settings:
     sharepoint: SharePointSettings  # reemplaza a [Externos_Frac]
     alerta: AlertaSettings
     medallia: MedalliaSettings
+    mail: MailSettings = MailSettings()
     periodo_desde_encuesta: int = 202601  # filtro 'periodo_evento >= 202601' del traslado EPA_ISN
     batch_size: int = 5000
     log_dir: Path = Path("logs")
@@ -189,6 +208,15 @@ def cargar_configuracion(base_dir: Path) -> Settings:
             headless=_env_bool("MEDALLIA_HEADLESS", True),
             navegador=(os.getenv("MEDALLIA_NAVEGADOR") or "firefox").strip().lower(),
             carpeta_capturas=base_dir / "logs",
+        ),
+        mail=MailSettings(
+            servidor=(os.getenv("MAIL_SERVIDOR") or "").strip(),
+            puerto=_env_int("MAIL_PUERTO", 587),
+            starttls=_env_bool("MAIL_STARTTLS", True),
+            usuario=(os.getenv("MAIL_USUARIO") or "").strip(),
+            password=os.getenv("MAIL_PASSWORD") or "",
+            remitente=(os.getenv("MAIL_REMITENTE") or "").strip(),
+            destinatarios=tuple(d.strip() for d in (os.getenv("MAIL_DESTINATARIOS") or "").split(",") if d.strip()),
         ),
         periodo_desde_encuesta=_env_int("PERIODO_DESDE_ENCUESTA", 202601),
         batch_size=_env_int("BATCH_SIZE", 5000),
