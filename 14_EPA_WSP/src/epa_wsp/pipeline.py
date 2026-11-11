@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 import alerta
+import consola
 import mappings
 import sql
 from carga import loader
@@ -69,6 +70,7 @@ class EpaWspPipeline:
     enviar_alerta: Callable[..., bool] = alerta.enviar_alerta
     descargar_medallia: Callable[[MedalliaSettings, object], str] = medallia_descarga.descargar_encuestas
     leer_medallia: Callable[[object, str], object] = extractor.extraer_csv_medallia
+    preguntar_reintento: Callable[[str], bool] = consola.preguntar_reintento
 
     # ------------------------------------------------------------------ #
     def run(self, solo_validar: bool = False) -> ResultadoPipeline:
@@ -171,26 +173,34 @@ class EpaWspPipeline:
     def _tolerante(self, r: ResultadoPipeline, paso: str, accion: Callable):
         """Execute Process con FailTaskIfReturnCodeIsNotSuccessValue=False."""
         logger.info("[EPA_WSP] %s", paso)
-        try:
-            return accion()
-        except Exception as exc:  # noqa: BLE001
-            if self.estricto:
-                raise PipelineError(self.name, paso, exc) from exc
-            logger.error("[EPA_WSP] Fallo en '%s' (se continua, como en el .dtsx): %s", paso, exc)
-            r.pasos_fallidos.append((paso, str(exc)))
-            if isinstance(exc, ContrasenaMedalliaCaducadaError):
-                r.medallia_contrasena_caducada = True
-            return None
+        while True:
+            try:
+                return accion()
+            except Exception as exc:  # noqa: BLE001
+                if self.estricto:
+                    raise PipelineError(self.name, paso, exc) from exc
+                consola.avisar_error(f"Fallo en '{paso}'", exc, "Sin reintento se continua con el siguiente paso (como en el .dtsx).")
+                if self.preguntar_reintento(f"Fallo '{paso}'. Reintentar este paso?"):
+                    logger.info("[EPA_WSP] Reintentando '%s'", paso)
+                    continue
+                r.pasos_fallidos.append((paso, str(exc)))
+                if isinstance(exc, ContrasenaMedalliaCaducadaError):
+                    r.medallia_contrasena_caducada = True
+                return None
 
     def _sql(self, r: ResultadoPipeline, paso: str, accion: Callable) -> bool:
         """Execute SQL Task: su fallo detiene la rama (no se ejecuta Log_Fin)."""
         logger.info("[EPA_WSP] %s", paso)
-        try:
-            accion()
-            return True
-        except Exception as exc:  # noqa: BLE001
-            if self.estricto:
-                raise PipelineError(self.name, paso, exc) from exc
-            logger.error("[EPA_WSP] Fallo en '%s': %s", paso, exc)
-            r.pasos_fallidos.append((paso, str(exc)))
-            return False
+        while True:
+            try:
+                accion()
+                return True
+            except Exception as exc:  # noqa: BLE001
+                if self.estricto:
+                    raise PipelineError(self.name, paso, exc) from exc
+                consola.avisar_error(f"Fallo en '{paso}'", exc, "Sin reintento esta rama termina con error (no se ejecuta Log_Fin).")
+                if self.preguntar_reintento(f"Fallo '{paso}'. Reintentar este paso?"):
+                    logger.info("[EPA_WSP] Reintentando '%s'", paso)
+                    continue
+                r.pasos_fallidos.append((paso, str(exc)))
+                return False

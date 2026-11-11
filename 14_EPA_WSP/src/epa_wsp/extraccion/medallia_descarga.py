@@ -37,6 +37,7 @@ Cambios respecto del original:
 from __future__ import annotations
 
 import logging
+import re
 import tempfile
 from contextlib import contextmanager
 from datetime import datetime
@@ -53,6 +54,13 @@ SEL_PASSWORD = '[name="password"]'
 SEL_INGRESAR = 'button[type="submit"]'
 SEL_MENU_EXPORTAR = "#openExportMenu"
 SEL_EXPORTAR_CSV = 'button[data-title="CSV"]'
+# Filtro 'Periodo de tiempo' de la lista de registros (selectores vistos en el portal).
+SEL_PERIODO_RESUMEN = '[data-test-name="cp-control-descriptor"]'
+SEL_PERIODO_RESUMEN_VALOR = '[data-test-name="cp-control-descriptor-value"]'
+SEL_PERIODO_COMBO = "#timeperiod-control"
+SEL_APLICAR_FILTROS = '[data-test-name="filters-submit-wrap"] button[type="submit"]'
+RE_ULTIMOS_30_DIAS = re.compile(r"^.ltimos 30 d.as$")  # tolera 'Ú' / 'í' con otra codificacion
+RE_30_DIAS = re.compile(r"30 d.as")
 
 # Pagina a la que redirige el portal tras el login cuando la contrasena caduco
 # (resetPassword.do); sin este control el error aparecia mas adelante como un
@@ -81,6 +89,20 @@ def _abrir_pagina_playwright(settings: MedalliaSettings) -> Iterator[object]:
             navegador.close()
 
 
+def _seleccionar_ultimos_30_dias(page) -> None:
+    """Cambia el 'Periodo de tiempo' de la lista de registros (por defecto
+    'Ultimos 7 dias hasta la fecha') a 'Ultimos 30 dias' ANTES de exportar:
+    clic en 'Periodo de tiempo' -> combo -> 'Ultimos 30 dias' -> Aplicar."""
+    page.locator(SEL_PERIODO_RESUMEN).filter(has_text="Periodo de tiempo").first.click(timeout=TIMEOUT_EXPORTAR_MS)
+    page.locator(SEL_PERIODO_COMBO).click(timeout=TIMEOUT_EXPORTAR_MS)
+    page.get_by_role("option", name=RE_ULTIMOS_30_DIAS).click(timeout=TIMEOUT_EXPORTAR_MS)
+    page.locator(SEL_APLICAR_FILTROS).click(timeout=TIMEOUT_EXPORTAR_MS)
+    # El resumen del filtro cambia a '... 30 dias' cuando el portal aplico el filtro.
+    page.locator(SEL_PERIODO_RESUMEN_VALOR).filter(has_text=RE_30_DIAS).first.wait_for(timeout=TIMEOUT_EXPORTAR_MS)
+    page.wait_for_load_state("networkidle", timeout=TIMEOUT_EXPORTAR_MS)
+    logger.info("Medallia: periodo de tiempo aplicado: ultimos 30 dias.")
+
+
 def exportar_csv(page, settings: MedalliaSettings):
     """Recorre el portal y devuelve el objeto Download del export CSV."""
     page.goto(settings.url_login)
@@ -94,6 +116,7 @@ def exportar_csv(page, settings: MedalliaSettings):
     logger.info("Medallia: sesion iniciada; abriendo la pagina de registros.")
 
     page.goto(settings.url_registros)
+    _seleccionar_ultimos_30_dias(page)
     page.locator(SEL_MENU_EXPORTAR).click(timeout=TIMEOUT_EXPORTAR_MS)
     with page.expect_download(timeout=settings.segundos_espera_descarga * 1000) as descarga:
         page.locator(SEL_EXPORTAR_CSV).click(timeout=TIMEOUT_EXPORTAR_MS)

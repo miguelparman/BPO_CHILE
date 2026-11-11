@@ -28,6 +28,8 @@ from typing import Any, Callable, Iterator, Sequence
 
 import numpy as np
 import pandas as pd
+
+import consola
 import pyodbc
 
 from config import DbSettings
@@ -116,6 +118,7 @@ def crear_conexion(
     espera_s: float = 5,
     dormir: Callable[[float], None] = time.sleep,
     conectar: Callable[..., pyodbc.Connection] = pyodbc.connect,
+    preguntar: Callable[[str], bool] = consola.preguntar_reintento,
 ) -> pyodbc.Connection:
     """Abre la conexion con el mismo reintento que los Connection Managers del
     .dtsx (ConnectRetryCount=1, ConnectRetryInterval=5): visto en la primera
@@ -130,15 +133,22 @@ def crear_conexion(
         f"Encrypt={settings.encrypt};"
         f"TrustServerCertificate={settings.trust_server_certificate}"
     )
-    for intento in range(reintentos + 1):
+    intento = 0
+    while True:
         try:
             conn = conectar(conn_str, autocommit=False)
             break
         except pyodbc.Error as exc:
-            if intento >= reintentos:
-                raise
-            logger.warning("No se pudo conectar a %s (%s); reintento en %s s.", settings.database, exc, espera_s)
-            dormir(espera_s)
+            titulo = f"No se pudo conectar a {settings.database}"
+            if intento < reintentos:
+                intento += 1
+                consola.avisar_error(titulo, exc, f"Reintento automatico en {espera_s} s ({intento}/{reintentos}).")
+                dormir(espera_s)
+                continue
+            consola.avisar_error(titulo, exc, "Se agotaron los reintentos automaticos.")
+            if preguntar(f"{titulo}. Reintentar la conexion?"):
+                continue
+            raise
     conn.timeout = 0  # sin limite por consulta: SP.EPA_ISN_CHILE tarda varios minutos
     return conn
 

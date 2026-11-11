@@ -34,6 +34,13 @@ class FakeLocator:
     def wait_for(self, timeout):
         self.page.acciones.append(("wait_for", self.selector, timeout))
 
+    def filter(self, **_):
+        return self
+
+    @property
+    def first(self):
+        return self
+
     def fill(self, valor):
         self.page.acciones.append(("fill", self.selector, valor))
 
@@ -58,6 +65,12 @@ class FakePage:
 
     def locator(self, selector):
         return FakeLocator(self, selector)
+
+    def get_by_role(self, rol, name):
+        return FakeLocator(self, f"{rol}:{name.pattern}")
+
+    def wait_for_load_state(self, estado, timeout):
+        self.acciones.append(("wait_for_load_state", estado, timeout))
 
     def wait_for_url(self, predicado, timeout):
         self.url = self.url_tras_login
@@ -104,6 +117,12 @@ def test_recorre_el_portal_en_el_mismo_orden_que_el_script_selenium(tmp_path):
         ("click", 'button[type="submit"]', None),
         ("wait_for_url", 20_000),
         ("goto", s.url_registros),
+        ("click", md.SEL_PERIODO_RESUMEN, 30_000),
+        ("click", "#timeperiod-control", 30_000),
+        ("click", "option:^.ltimos 30 d.as$", 30_000),
+        ("click", md.SEL_APLICAR_FILTROS, 30_000),
+        ("wait_for", md.SEL_PERIODO_RESUMEN_VALOR, 30_000),
+        ("wait_for_load_state", "networkidle", 30_000),
         ("click", "#openExportMenu", 30_000),
         ("expect_download", 60_000),
         ("click", 'button[data-title="CSV"]', 30_000),

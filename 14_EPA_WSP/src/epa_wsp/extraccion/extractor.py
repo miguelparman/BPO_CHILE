@@ -41,9 +41,20 @@ def extraer_csv_sharepoint(reader, traslado: Traslado) -> pd.DataFrame:
 
 
 def leer_csv_medallia(origen) -> pd.DataFrame:
-    """Lectura identica al script original: pd.read_csv(latin1, dtype=str).
+    """pd.read_csv(dtype=str). El script original leia siempre en latin1, pero
+    el export del portal puede venir en UTF-8 (sin BOM): leido como latin1 las
+    tildes y '¿' quedan deformadas y no coinciden con los nombres de columna.
+    Se prueba UTF-8 (estricto) y, si el archivo no lo es, latin1 como el original.
     'origen' es una ruta o un buffer de bytes."""
-    return pd.read_csv(origen, encoding="latin1", dtype=str)
+    try:
+        df = pd.read_csv(origen, encoding="utf-8-sig", dtype=str)
+        logger.info("CSV de Medallia leido como UTF-8.")
+        return df
+    except UnicodeDecodeError:
+        if hasattr(origen, "seek"):
+            origen.seek(0)
+        logger.info("CSV de Medallia no es UTF-8: se lee como latin1 (igual que el script original).")
+        return pd.read_csv(origen, encoding="latin1", dtype=str)
 
 
 def extraer_csv_medallia(carpeta, nombre: str) -> pd.DataFrame:
