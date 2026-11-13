@@ -85,20 +85,23 @@ REPORTS = [
     },
 
     # BLOQUE ISN
-    {
-        "name": "Reporte_isn_aux_contacto.csv",
-        "url": "https://telefonicab2b.lightning.force.com/lightning/r/Report/00O5I000001EpdYUAS/view",
-        # Ejemplo de destino propio (opcional, no necesario para este informe):
-        "sharepoint_folder_path": "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/10 ISN",
-        "local_copy_dir": r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\ISN\Aux_contacto",
-    },
-    {
-        "name": "Reporte_isn_aux_cliente.csv",
-        "url": "https://telefonicab2b.lightning.force.com/lightning/r/Report/00O5I000001EpdTUAS/view",
-        # Ejemplo de destino propio (opcional, no necesario para este informe):
-        "sharepoint_folder_path": "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/10 ISN",
-        "local_copy_dir": r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\ISN\Aux_cliente",
-    },
+    # DESACTIVADOS (2026-11-13): 05_isn ya no carga estos dos archivos (ISN_CARGAR_AUX_CONTACTO / ISN_CARGAR_AUX_CLIENTE
+    # = false): sus columnas solo llegan a TBL_ISN_SF, que nadie lee, y no pasan al isn.csv. Para volver a descargarlos,
+    # descomentar estos dos informes Y poner esas variables en true en el .env de 05_isn.
+    # {
+    #     "name": "Reporte_isn_aux_contacto.csv",
+    #     "url": "https://telefonicab2b.lightning.force.com/lightning/r/Report/00O5I000001EpdYUAS/view",
+    #     # Ejemplo de destino propio (opcional, no necesario para este informe):
+    #     "sharepoint_folder_path": "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/10 ISN",
+    #     "local_copy_dir": r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\ISN\Aux_contacto",
+    # },
+    # {
+    #     "name": "Reporte_isn_aux_cliente.csv",
+    #     "url": "https://telefonicab2b.lightning.force.com/lightning/r/Report/00O5I000001EpdTUAS/view",
+    #     # Ejemplo de destino propio (opcional, no necesario para este informe):
+    #     "sharepoint_folder_path": "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/10 ISN",
+    #     "local_copy_dir": r"D:\IRISCENE ENGINEERING CORPORATION SLU\BPO - Insumos\Chile\ISN\Aux_cliente",
+    # },
     {
         "name": "Reporte_Contactos_Salesforce_BI.csv",
         "url": "https://telefonicab2b.lightning.force.com/lightning/r/Report/00O5I000001ozbaUAA/view",
