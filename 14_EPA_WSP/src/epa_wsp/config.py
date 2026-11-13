@@ -83,20 +83,20 @@ class AlertaSettings:
 
 @dataclass(frozen=True)
 class MailSettings:
-    """Aviso por correo (SMTP) cuando falla el proceso (ver notificacion.py).
-    Desactivado si falta el servidor, el remitente o los destinatarios."""
+    """Aviso por correo (Microsoft Graph) cuando falla el proceso (ver notificacion.py).
+    App registration propio del correo; desactivado si falta cualquier dato."""
 
-    servidor: str = ""
-    puerto: int = 587
-    starttls: bool = True
-    usuario: str = ""  # vacio = sin autenticacion (relay interno)
-    password: str = ""
-    remitente: str = ""
+    tenant_id: str = ""
+    client_id: str = ""
+    client_secret: str = ""
+    remitente: str = ""  # buzon desde el que se envia (mismo tenant del app registration)
     destinatarios: tuple[str, ...] = ()
 
     @property
     def activo(self) -> bool:
-        return bool(self.servidor and self.remitente and self.destinatarios)
+        return bool(
+            self.tenant_id and self.client_id and self.client_secret and self.remitente and self.destinatarios
+        )
 
 
 @dataclass(frozen=True)
@@ -210,11 +210,9 @@ def cargar_configuracion(base_dir: Path) -> Settings:
             carpeta_capturas=base_dir / "logs",
         ),
         mail=MailSettings(
-            servidor=(os.getenv("MAIL_SERVIDOR") or "").strip(),
-            puerto=_env_int("MAIL_PUERTO", 587),
-            starttls=_env_bool("MAIL_STARTTLS", True),
-            usuario=(os.getenv("MAIL_USUARIO") or "").strip(),
-            password=os.getenv("MAIL_PASSWORD") or "",
+            tenant_id=(os.getenv("MAIL_TENANT_ID") or "").strip(),
+            client_id=(os.getenv("MAIL_CLIENT_ID") or "").strip(),
+            client_secret=os.getenv("MAIL_CLIENT_SECRET") or "",
             remitente=(os.getenv("MAIL_REMITENTE") or "").strip(),
             destinatarios=tuple(d.strip() for d in (os.getenv("MAIL_DESTINATARIOS") or "").split(",") if d.strip()),
         ),

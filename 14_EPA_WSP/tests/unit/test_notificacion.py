@@ -1,65 +1,53 @@
-"""Correo de aviso de fallo (SMTP) con un servidor falso."""
+"""Correo de aviso de fallo (Graph sendMail) con un POST falso."""
 
 from config import MailSettings
 from notificacion import enviar_aviso_fallo
 
 
-class FakeSMTP:
-    instancias: list = []
-
-    def __init__(self, servidor, puerto, timeout):
-        self.args, self.pasos, self.mensaje = (servidor, puerto, timeout), [], None
-        FakeSMTP.instancias.append(self)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
-
-    def starttls(self):
-        self.pasos.append("starttls")
-
-    def login(self, u, p):
-        self.pasos.append(("login", u, p))
-
-    def send_message(self, msg):
-        self.mensaje = msg
+class Resp:
+    def __init__(self, codigo, texto=""):
+        self.status_code, self.text = codigo, texto
 
 
 def _mail(**kw):
-    base = dict(servidor="smtp.x.com", remitente="a@x.com", destinatarios=("a@x.com", "b@x.com"),
-                usuario="u", password="p")
+    base = dict(tenant_id="t", client_id="c", client_secret="s", remitente="a@x.com", destinatarios=("a@x.com", "b@x.com"))
     base.update(kw)
     return MailSettings(**base)
 
 
-def test_desactivado_si_falta_servidor_remitente_o_destinatarios():
-    FakeSMTP.instancias.clear()
-    assert enviar_aviso_fallo(MailSettings(), "s", "c", smtp_factory=FakeSMTP) is False
-    assert enviar_aviso_fallo(_mail(servidor=""), "s", "c", smtp_factory=FakeSMTP) is False
-    assert not FakeSMTP.instancias
+def _token(m):
+    return f"TOKEN-{m.client_id}"
 
 
-def test_envia_con_starttls_login_y_destinatarios():
-    FakeSMTP.instancias.clear()
-    assert enviar_aviso_fallo(_mail(), "asunto", "cuerpo", smtp_factory=FakeSMTP) is True
-    s = FakeSMTP.instancias[0]
-    assert s.args == ("smtp.x.com", 587, 30)
-    assert s.pasos == ["starttls", ("login", "u", "p")]
-    assert s.mensaje["Subject"] == "asunto" and s.mensaje["To"] == "a@x.com, b@x.com"
-    assert s.mensaje.get_content().strip() == "cuerpo"
+def test_desactivado_si_falta_cualquier_dato():
+    llamadas = []
+    for m in (MailSettings(), _mail(client_secret=""), _mail(remitente=""), _mail(destinatarios=())):
+        assert enviar_aviso_fallo(m, "s", "c", post=lambda *a, **k: llamadas.append(1), obtener_token=_token) is False
+    assert not llamadas
 
 
-def test_sin_usuario_ni_starttls_no_autentica():
-    FakeSMTP.instancias.clear()
-    enviar_aviso_fallo(_mail(usuario="", starttls=False), "s", "c", smtp_factory=FakeSMTP)
-    assert FakeSMTP.instancias[0].pasos == []
+def test_envia_con_el_formato_de_graph():
+    capt = {}
+
+    def post(url, headers, json, timeout):
+        capt.update(url=url, headers=headers, json=json)
+        return Resp(202)
+
+    assert enviar_aviso_fallo(_mail(), "asunto", "cuerpo", post=post, obtener_token=_token) is True
+    assert capt["url"].endswith("/users/a@x.com/sendMail")
+    assert capt["headers"]["Authorization"] == "Bearer TOKEN-c"
+    msg = capt["json"]["message"]
+    assert msg["subject"] == "asunto" and msg["body"]["content"] == "cuerpo"
+    assert [r["emailAddress"]["address"] for r in msg["toRecipients"]] == ["a@x.com", "b@x.com"]
 
 
-def test_error_del_servidor_no_rompe_el_proceso(caplog):
-    def falla(*a, **k):
-        raise ConnectionRefusedError("rechazado")
+def test_error_de_graph_no_rompe_el_proceso(caplog):
+    r = enviar_aviso_fallo(_mail(), "s", "c", post=lambda *a, **k: Resp(403, "denied"), obtener_token=_token)
+    assert r is False and "Mail.Send" in caplog.text
 
-    assert enviar_aviso_fallo(_mail(), "s", "c", smtp_factory=falla) is False
-    assert "No se pudo enviar el correo" in caplog.text
+
+def test_fallo_al_obtener_token_o_enviar_no_se_propaga():
+    def sin_token(m):
+        raise ConnectionError("sin red")
+
+    assert enviar_aviso_fallo(_mail(), "s", "c", post=lambda *a, **k: Resp(202), obtener_token=sin_token) is False
