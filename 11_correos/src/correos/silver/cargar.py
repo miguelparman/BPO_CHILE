@@ -99,6 +99,7 @@ _REGLAS_COMPILADAS = [
         regla,
         _patron(regla.textos, regla.palabra_completa) if _usa_patron(regla) else None,
         {_normalizar(t) for t in regla.textos} if not _usa_patron(regla) else None,
+        _patron(regla.excepto, False) if regla.excepto else None,
     )
     for regla in REGLAS_ASUNTO_AGRUPADO
 ]
@@ -112,11 +113,13 @@ def agrupar_asunto(asunto: object, contacto: object = None, tipo: object = None)
         CAMPO_CONTACTO: _normalizar(contacto) if isinstance(contacto, str) and contacto.strip() else None,
     }
     correos = _correos(contacto)
-    for regla, patron, correos_regla in _REGLAS_COMPILADAS:
+    for regla, patron, correos_regla, patron_excepto in _REGLAS_COMPILADAS:
         if regla.tipo is not None and tipo != regla.tipo:
             continue
         texto = textos[regla.campo]
         if patron is not None and texto is not None and patron.search(texto):
+            if patron_excepto is not None and patron_excepto.search(texto):
+                continue
             return regla.grupo
         if correos_regla is not None and correos & correos_regla:
             return regla.grupo

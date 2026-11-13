@@ -131,11 +131,14 @@ primera que calza, sin distinguir mayúsculas ni tildes:
    es **igual** a `seguimiento.moviles@movistar.cl`.
 4. **SEGUIMIENTO VENTAS**: mensaje de **Entrada** y alguno de los correos de `Contacto`
    es **igual** a uno de `CORREOS_SEGUIMIENTO_VENTAS`.
-5. **SEGUIMIENTO REMEDY**: `Asunto` contiene `actividad remedy`.
-6. **PRESENTACIÓN**: `Asunto` contiene `actualizacion de correo de contacto` o `presentacion`
+5. **SEGUIMIENTO VENTAS (por asunto)**, Entrada y Salida: `Asunto` contiene `cotizacion`
+   (salvo que también contenga `recambio`), `compra`, `linea adicional`, `linea nueva`,
+   `beneficio movistar exclusivo` o `dscto. para su empresa.` (búsqueda parcial).
+6. **SEGUIMIENTO REMEDY**: `Asunto` contiene `actividad remedy`.
+7. **PRESENTACIÓN**: `Asunto` contiene `actualizacion de correo de contacto` o `presentacion`
    como **palabra completa** (`representación` o `presentaciones` no cuentan).
-7. **PRUEBA**: `Asunto` contiene `prueba`.
-8. **PROMO**: `Asunto` contiene `promo` (cubre `PROMOSEPTIEMBRE`, `PROMOSETIEMBRE`, `PROMO SEPTIEMBRE`, `PROMOCIONES`…).
+8. **PRUEBA**: `Asunto` contiene `prueba`.
+9. **PROMO**: `Asunto` contiene `promo` (cubre `PROMOSEPTIEMBRE`, `PROMOSETIEMBRE`, `PROMO SEPTIEMBRE`, `PROMOCIONES`…).
 
 Si no calza ninguna, queda `NULL`.
 

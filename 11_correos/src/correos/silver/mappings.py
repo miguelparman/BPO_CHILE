@@ -90,6 +90,9 @@ class ReglaAgrupacion(NamedTuple):
     contiene: bool = False
     # Si se indica, la regla solo aplica a mensajes de ese 'Tipo' ('Entrada'/'Salida').
     tipo: str | None = None
+    # Solo CAMPO_ASUNTO: si 'Asunto' contiene alguno de estos textos (misma
+    # busqueda parcial, sin mayusculas ni tildes), la regla NO calza.
+    excepto: list[str] | None = None
 
 
 CAMPO_ASUNTO = "Asunto"
@@ -134,6 +137,20 @@ REGLAS_ASUNTO_AGRUPADO: list[ReglaAgrupacion] = [
     ),
     ReglaAgrupacion("SEGUIMIENTO TÉCNICA", CAMPO_CONTACTO, ["seguimiento.moviles@movistar.cl"], tipo="Entrada"),
     ReglaAgrupacion("SEGUIMIENTO VENTAS", CAMPO_CONTACTO, CORREOS_SEGUIMIENTO_VENTAS, tipo="Entrada"),
+    # SEGUIMIENTO VENTAS tambien por asunto (Entrada y Salida). Va antes que las
+    # demas reglas de asunto. Cotizacion no cuenta si el asunto menciona 'recambio'.
+    ReglaAgrupacion("SEGUIMIENTO VENTAS", CAMPO_ASUNTO, ["cotizacion"], excepto=["recambio"]),
+    ReglaAgrupacion(
+        "SEGUIMIENTO VENTAS",
+        CAMPO_ASUNTO,
+        [
+            "compra",
+            "linea adicional",
+            "linea nueva",
+            "beneficio movistar exclusivo",
+            "dscto. para su empresa.",
+        ],
+    ),
     # 'actividad remedy' a secas: cubre '[REF:...]Actividad Remedy[ID:REQ...]'
     # y 'Actividad Remedy REQ...', con o sin 'RE:'/'RV:'.
     ReglaAgrupacion("SEGUIMIENTO REMEDY", CAMPO_ASUNTO, ["actividad remedy"]),
