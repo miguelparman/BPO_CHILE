@@ -96,6 +96,17 @@ class Settings:
     # Microsoft Graph desde el SharePoint 'ReportingFractalia' (ver sp_* abajo).
     sp_aux_cliente_nombre: str = os.getenv("SP_AUX_CLIENTE_NOMBRE", "Reporte_isn_aux_cliente.csv")
     sp_aux_contacto_nombre: str = os.getenv("SP_AUX_CONTACTO_NOMBRE", "Reporte_isn_aux_contacto.csv")
+    # Carga de Reporte_isn_aux_cliente.csv -> TBL_ISN_SF_AUX_CLIENTE. APAGADA por defecto (decision del usuario
+    # 2026-11-13): sus 5 columnas (Id del cliente, Subsector, Rango de trabajadores, Categoria Heredada,
+    # Descripcion del negocio) solo llegan a TBL_ISN_SF, que ningun proceso lee, y no pasan a TBL_ISN ni a isn.csv.
+    # Apagada, TBL_ISN_SF_AUX_CLIENTE queda congelada (el LEFT JOIN de TBL_ISN_SF sigue funcionando con datos viejos).
+    # Para reactivarla: ISN_CARGAR_AUX_CLIENTE=true en el .env.
+    isn_cargar_aux_cliente: bool = os.getenv("ISN_CARGAR_AUX_CLIENTE", "false").strip().lower() in ("1", "true", "si", "yes")
+    # Carga de Reporte_isn_aux_contacto.csv -> TBL_ISN_SF_AUX_CONTACTO. APAGADA por defecto (decision del usuario
+    # 2026-11-13): su unica columna util (Id  de contacto) solo llega a TBL_ISN_SF, que ningun proceso lee, y no pasa
+    # a TBL_ISN ni a isn.csv. Apagada, TBL_ISN_SF_AUX_CONTACTO queda congelada (el LEFT JOIN sigue funcionando con
+    # datos viejos). Para reactivarla: ISN_CARGAR_AUX_CONTACTO=true en el .env.
+    isn_cargar_aux_contacto: bool = os.getenv("ISN_CARGAR_AUX_CONTACTO", "false").strip().lower() in ("1", "true", "si", "yes")
     # Mismo hallazgo que en csv_contactos_encoding: cp1252 estricto puede
     # fallar con bytes fuera de rango en estos reportes; latin-1 es más
     # tolerante y se usa como default (confirmar si aparecen tildes mal

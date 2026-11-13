@@ -120,6 +120,17 @@ Tres bases en el mismo servidor (`172.17.0.162`): `CL_ANALISIS` (contactos), `CL
 
 Dos Connection Manager del `.dtsx` (`Automatizado` tipo FILE y `CLIENTES DETRACTORES CALIDAD` tipo EXCEL) están definidos pero **ningún task los usa** — no se migraron. Si algún otro proceso depende de que ese Excel se actualice, confirmarlo antes de apagar el paquete SSIS original.
 
+### Cargas de `Reporte_isn_aux_cliente.csv` y `Reporte_isn_aux_contacto.csv` APAGADAS (decisión del usuario, 2026-11-13)
+
+Las columnas que aportan (aux_cliente: `Id  del cliente`, `Subsector`, `Rango de trabajadores`, `Categoria Heredada`,
+`Descripción del negocio`; aux_contacto: `Id  de contacto`) solo llegan a `TBL_ISN_SF` (`select_into_tbl_isn_sf.sql`,
+`LEFT JOIN` por `[Número del caso]`); no pasan a `TBL_ISN_PRE`, `TBL_ISN`, `TBL_ISN_SF_CONSOLIDADO` ni al `isn.csv`, y no hay
+SP, vista ni job en el 162 que lea `TBL_ISN_SF` ni las tablas auxiliares. Por eso las ramas `aux_cliente` y `aux_contacto` del
+contenedor (descarga + `TRUNCATE` + carga de `TBL_ISN_SF_AUX_CLIENTE` / `TBL_ISN_SF_AUX_CONTACTO`) no corren por defecto: el
+contenedor ejecuta 2 ramas en paralelo en vez de 4. Las tablas auxiliares quedan congeladas y los `LEFT JOIN` siguen
+funcionando (esas columnas de `TBL_ISN_SF` muestran datos viejos o NULL). Para reactivar cada una: `ISN_CARGAR_AUX_CLIENTE=true`
+y/o `ISN_CARGAR_AUX_CONTACTO=true` en el `.env`. No se tocó el SQL ni el bot (`201_bot_salesforce` sigue publicando los archivos).
+
 ### Hallazgos y decisiones a confirmar
 
 - **Mismo problema de cabecera vs. columna real** que en Contactos: `Reporte_isn_aux_cliente.csv` / `Reporte_isn_aux_contacto.csv` declaran `"Id  del cliente"` / `"Id  de contacto"` (dos espacios) en el `.dtsx`, pero el archivo real trae `"Id. del cliente"` / `"Id. de contacto"` (con punto) — se mapea por posición, igual que en contactos.

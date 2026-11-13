@@ -3,7 +3,8 @@ Orquestación de SSIS_CL_ISN.dtsx. Reproduce el árbol de PrecedenceConstraint
 completo (todas "on Success", sin expresiones -- ver el README para el
 diagrama del árbol original):
 
-  Contenedor de secuencias (4 ramas EN PARALELO)
+  Contenedor de secuencias (4 ramas EN PARALELO; las de aux_contacto y aux_cliente estan APAGADAS por defecto,
+  ver config.isn_cargar_aux_contacto / isn_cargar_aux_cliente -> quedan 2)
       -> SECUENCIA NUEVA (SF -> Contenedor de secuencias -> TBL_ISN_PRE -> Contenedor de secuencias 1, secuencial)
           -> fan-out EN PARALELO: rama TBL_ISN | rama TBL_ISN_CALIDAD
 
@@ -85,9 +86,23 @@ def _contenedor_de_secuencias() -> None:
     ramas = {
         "delete_envios_consolidado_local": _rama_delete_envios_consolidado_local,
         "tbls_auxiliares": _rama_tbls_auxiliares,
-        "aux_contacto": _rama_aux_contacto,
-        "aux_cliente": _rama_aux_cliente,
     }
+    # Ramas de aux_contacto / aux_cliente: APAGADAS por defecto (sus columnas solo llegan a TBL_ISN_SF, que nadie lee,
+    # y no pasan al isn.csv). Cada una se reactiva con su variable de entorno (ver config.py).
+    opcionales = (
+        ("aux_contacto", settings.isn_cargar_aux_contacto, _rama_aux_contacto, "ISN_CARGAR_AUX_CONTACTO",
+         "Reporte_isn_aux_contacto.csv", "TBL_ISN_SF_AUX_CONTACTO"),
+        ("aux_cliente", settings.isn_cargar_aux_cliente, _rama_aux_cliente, "ISN_CARGAR_AUX_CLIENTE",
+         "Reporte_isn_aux_cliente.csv", "TBL_ISN_SF_AUX_CLIENTE"),
+    )
+    for nombre, activa, rama, variable, archivo, tabla in opcionales:
+        if activa:
+            ramas[nombre] = rama
+        else:
+            logger.info(
+                "[Contenedor de secuencias] rama '%s' APAGADA (%s=false): no se descarga %s ni se toca %s (queda congelada).",
+                nombre, variable, archivo, tabla,
+            )
     _correr_ramas_paralelas(ramas, "Contenedor de secuencias")
 
 
