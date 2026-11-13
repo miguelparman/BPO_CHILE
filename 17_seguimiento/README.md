@@ -48,6 +48,28 @@ Antes de cargar:
 `--verificar` devuelve 0 si todo está listo, 1 si falla una conexión y 2 si alguna carga se omitiría por frescura.
 Cada corrida deja su log en `logs/`.
 
+## Cola de reclamos dentro del paquete 02 (carga acumulativa)
+
+El paquete 02 carga ademas `Chi_cola_reclamo_aux_propietario.csv` (SharePoint `09 RECLAMOS`, lo publica
+`201_bot_salesforce`) en `[CL_FACTURACION].[dbo].[TBL_COLA_CHI_RECLAMO_PROPIETARIO]` (172.17.0.162), en la misma sesion
+y a continuacion de Casos B. **No existe en `CL_Seguimiento_02_...dtsx`**: reemplaza la carga del paquete SSIS
+`SSIS_BBDD_Local_CH_CL_SEGUIMIENTO.dtsx` (TRUNCATE + carga completa desde el `_v2.csv`), y por eso esta marcada en
+`Paquete.agregadas` (las pruebas de equivalencia contra el .dtsx la excluyen; el resto del 02 se sigue comparando).
+
+El CSV trae los registros nuevos y los modificados; la carga es un upsert por `[Número del caso]`: los casos nuevos se
+insertan y los que ya estan y cambiaron (propietario, email o subtipo) se actualizan, en una sola transaccion. Nunca se
+trunca ni se borra; es idempotente (recargar el mismo archivo no duplica ni vuelve a modificar) y un caso que no viene en
+el CSV no se toca. Las celdas vacias se cargan como NULL, como el historico de la tabla.
+
+* Tareas (nuevo bloque de frescura `Cola de reclamos`): `CARGA TEMPORAL COLA RECLAMO` (Data Flow: CSV -> `#temporal`
+  con la propia tabla destino de molde; valida columnas, anchos y conversiones) -> `ACTUALIZA COLA RECLAMO` +
+  `CARGA COLA RECLAMO` (UPDATE e INSERT en una transaccion). T-SQL en `scripts_sql/p02/90_*.sql` y `95_*.sql`.
+* Mismo control de frescura que los demas: si el CSV no esta actualizado (`FRESCURA_MAX_MIN`) o viene vacio, se omite
+  solo ese bloque (con una advertencia) y el resto del 02 sigue.
+* Comparte Log Inicio/Fin con el 02 (`Update_Carga_Casos_Chile`).
+* Codigo: tareas en `paquetes/p02_casos.py` y `FLUJO_COLA_RECLAMO` en `mappings.py`; pruebas en
+  `tests/unit/test_cola_reclamo_en_02.py`. Carpeta configurable con `SHAREPOINT_FOLDER_RECLAMOS`.
+
 ## Estructura (src layout, modular por componentes)
 
 ```
@@ -60,7 +82,7 @@ src/seguimiento/
   transformacion/transformer.py   Derived Column + Data Conversion + saltos de línea CRLF
   transformacion/cruce.py         cruce Casos x Nombre Contacto (reemplaza staging + UPDATE)
   transformacion/fechas.py        texto -> DT_DATE (día primero)
-  transformacion/descripciones_nc.py   Carga_Reporte_Descripciones_NC_Chile.py migrado
+  transformacion/descripciones_nc.py   Carga_Reporte_Descripciones_NC_Chile.py migrado (carga ACUMULATIVA: upsert por [Número del caso])
   carga/loader.py                 sesión por paquete, #temporales, Execute SQL Tasks y transacciones
   mappings.py                     archivos, columnas, tipos y anchos del .dtsx
   sql.py + scripts_sql/pXX/       T-SQL literal de cada Execute SQL Task

@@ -32,8 +32,8 @@ def leer(paquete: str, nombre: str) -> str:
         return f.read()
 
 
-def nombre_staging(tabla: str) -> str:
-    return f"[{BD_STAGING}].[{ESQUEMA}].[{tabla}]"
+def nombre_staging(tabla: str, base: str = BD_STAGING) -> str:
+    return f"[{base}].[{ESQUEMA}].[{tabla}]"
 
 
 def a_temporal(sql: str) -> str:
@@ -44,12 +44,12 @@ def a_temporal(sql: str) -> str:
     return sql
 
 
-def crear_temporal(tabla: str, tipos: tuple[tuple[str, str], ...] = ()) -> str:
+def crear_temporal(tabla: str, tipos: tuple[tuple[str, str], ...] = (), base: str = BD_STAGING) -> str:
     """#temporal con la estructura exacta de la staging permanente (molde:
     mismos tipos, anchos y collation; no lee ni escribe sus filas), salvo las
     columnas de 'tipos' (FlujoSpec.tipos_temporal)."""
     alteraciones = "".join(f" ALTER TABLE #{tabla} ALTER COLUMN [{c}] {t} NULL;" for c, t in tipos)
-    return f"DROP TABLE IF EXISTS #{tabla}; SELECT TOP 0 * INTO #{tabla} FROM {nombre_staging(tabla)};{alteraciones}"
+    return f"DROP TABLE IF EXISTS #{tabla}; SELECT TOP 0 * INTO #{tabla} FROM {nombre_staging(tabla, base)};{alteraciones}"
 
 
 def insert_temporal(flujo: FlujoSpec) -> str:
@@ -63,6 +63,11 @@ def insert_temporal(flujo: FlujoSpec) -> str:
         + ", ".join("?" for _ in columnas)
         + ")"
     )
+
+
+def insert_en_temporal(tabla: str, columnas: tuple[str, ...]) -> str:
+    """INSERT parametrizado en la #temporal '#tabla' (ver crear_temporal), sin FlujoSpec."""
+    return f"INSERT INTO #{tabla} (" + ", ".join(f"[{c}]" for c in columnas) + ") VALUES (" + ", ".join("?" for _ in columnas) + ")"
 
 
 def insert_tabla(tabla: str, columnas: tuple[str, ...]) -> str:

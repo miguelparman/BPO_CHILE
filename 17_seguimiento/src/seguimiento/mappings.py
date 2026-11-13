@@ -39,12 +39,15 @@ ESQUEMA = "dbo"
 # --------------------------------------------------------------------------- #
 CARPETA_SEGUIMIENTO = "seguimiento"
 CARPETA_AUXILIARES = "auxiliares"
+CARPETA_RECLAMOS = "reclamos"
 CARPETAS_DEFAULT = {
     CARPETA_SEGUIMIENTO: "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/01 SEGUIMIENTO",
     # El bot publica Nombre_Contacto y Descripciones_NC aqui (sharepoint_folder_path
     # propio); las copias que quedaron en '01 SEGUIMIENTO' no se actualizan
     # desde 2026-09-11.
     CARPETA_AUXILIARES: "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/12 AUXILIARES",
+    # Cola de reclamos (Chi_cola_reclamo_aux_propietario.csv): carga acumulativa dentro del paquete 02 (paquetes/p02_casos.py)
+    CARPETA_RECLAMOS: "REPOSITORIOS DE CRUDOS/CHILE/BPOCHIPE/09 RECLAMOS",
 }
 
 # --------------------------------------------------------------------------- #
@@ -122,6 +125,8 @@ class FlujoSpec:
     # Columnas de la #temporal que se definen con otro tipo que la staging:
     # ((columna, tipo SQL), ...). Ver FLUJO_TEMP_COMENTARIOS.
     tipos_temporal: tuple[tuple[str, str], ...] = ()
+    # Base de datos de la tabla que sirve de molde de la #temporal (por defecto la staging de CL_TEMPORALES).
+    base: str = BD_STAGING
 
     @property
     def columnas_insert(self) -> tuple[str, ...]:
@@ -490,3 +495,42 @@ TODOS_LOS_FLUJOS = (
 TABLAS_TEMPORALES = tuple(f.tabla for f in TODOS_LOS_FLUJOS)
 # Staging que el .dtsx usa y la migracion ya no necesita (ver EQUIVALENCIA.md).
 TABLAS_ELIMINADAS = ("TBL_SALESFORCE_DATOS_CONTACTO", "TBL_SALESFORCE_CASOS_TIPIFICACIONES")
+
+# --------------------------------------------------------------------------- #
+# Cola de reclamos (agregada al paquete 02): Chi_cola_reclamo_aux_propietario.csv
+#   -> CL_FACTURACION.dbo.TBL_COLA_CHI_RECLAMO_PROPIETARIO   (carga ACUMULATIVA: upsert por [Numero del caso])
+# No sale de un CL_Seguimiento_0x.dtsx: reemplaza las tareas 'TBL_COLA_CHI_RECLAMO_PROPIETARIO 1' y 'SERVIDOR' de
+# SSIS_BBDD_Local_CH_CL_SEGUIMIENTO.dtsx, asi que NO esta en TODOS_LOS_FLUJOS (que verifican las pruebas contra los
+# .dtsx de 02-07). Se lee por POSICION, como todos los Flat File.
+# --------------------------------------------------------------------------- #
+BD_COLA_RECLAMO = "CL_FACTURACION"
+TABLA_COLA_RECLAMO = "TBL_COLA_CHI_RECLAMO_PROPIETARIO"
+
+ARCHIVO_COLA_RECLAMO = ArchivoSpec(
+    "Chi_cola_reclamo_aux_propietario.csv",
+    CARPETA_RECLAMOS,
+    "Chi_cola_reclamo_aux_propietario",
+    (
+        ColumnaArchivo("Número del caso", FF_STR, 50),
+        ColumnaArchivo("Propietario del caso", FF_STR, 800),
+        ColumnaArchivo("Email del propietario del caso", FF_STR, 800),
+        ColumnaArchivo("Subtipo de solicitud", FF_STR, 800),
+    ),
+)
+
+# La #temporal toma como molde la propia tabla destino (mismos tipos, anchos y collation). Los anchos son los
+# de las columnas reales de la tabla: nvarchar(10) / (125) / (125) / (125).
+FLUJO_COLA_RECLAMO = FlujoSpec(
+    "Package\\CARGA COLA RECLAMO\\CARGA TEMPORAL COLA RECLAMO",
+    "Destino de OLE DB",
+    ARCHIVO_COLA_RECLAMO,
+    TABLA_COLA_RECLAMO,
+    (
+        ColumnaDestino("Número del caso", 0, _w(10)),
+        ColumnaDestino("Propietario del caso", 1, _w(125)),
+        ColumnaDestino("Email del propietario del caso", 2, _w(125)),
+        ColumnaDestino("Subtipo de solicitud", 3, _w(125)),
+    ),
+    tablock=False,
+    base=BD_COLA_RECLAMO,
+)

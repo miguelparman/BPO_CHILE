@@ -52,6 +52,8 @@ pytestmark = pytest.mark.skipif(
 NO_MIGRADAS = {
     ("02", "Package\\ACTUALIZA CASOS OTRO PAIS"): "excluida",  # decision del usuario: no tocar PE_SALESFORCE_ACTUAL
     ("02", "Package\\CARGA BASE CASOS SALESFORCE\\ACTUALIZA TIFICIACIONES"): "deshabilitada",
+    # decision del usuario 2026-11-13: Descripciones NC pasa a carga ACUMULATIVA (upsert); el TRUNCATE ya no se ejecuta
+    ("06", "Package\\CARGA DESCRIPCIONES NC\\TRUNCATE TEMPORAL"): "reemplazada",
     ("07", "Package\\BK"): "deshabilitada",
     ("07", "Package\\CARGA ESPEJO AZURE"): "deshabilitada",
 }
@@ -116,7 +118,8 @@ def test_sql_literal_de_cada_execute_sql_task(pq):
         assert ref in ejecutadas, f"Execute SQL Task sin migrar ni justificar: {ref}"
         assert ejecutadas[ref] == texto, f"T-SQL distinto en {ref}"
         assert not deshabilitada
-    assert set(ejecutadas) <= set(_sql_del_dtsx(pq)), "hay tareas migradas que no existen en el .dtsx"
+    # (las tareas 'agregadas' al paquete no existen en el .dtsx por diseno: Paquete.agregadas)
+    assert set(ejecutadas) - set(pq.agregadas) <= set(_sql_del_dtsx(pq)), "hay tareas migradas que no existen en el .dtsx"
 
 
 _TRUNCATE = re.compile(r"^\s*(TRUNCATE TABLE \[CL_TEMPORALES\]\.\[dbo\]\.\[(?P<t>\w+)\]\s*)+$", re.IGNORECASE)
@@ -212,9 +215,16 @@ def test_toda_tarea_habilitada_esta_migrada_o_justificada():
 
 
 def test_numero_de_tareas_ssis_vs_python():
-    tareas = {p.codigo: (len(p.refids), len(p.tareas), len(p.redundantes)) for p in PAQUETES}
+    def pasos(p):  # pasos Python que vienen del .dtsx (sin las tareas agregadas)
+        agregadas = set(p.agregadas)
+        return [t for t in p.tareas if t.nombre not in agregadas and not {x.nombre for x in getattr(t, "tareas", ())} & agregadas]
+
+    tareas = {
+        p.codigo: (len([r for r in p.refids if r not in p.agregadas]), len(pasos(p)), len(p.redundantes)) for p in PAQUETES
+    }
     # (tareas del .dtsx que se ejecutan, pasos Python, tareas redundantes eliminadas)
-    assert tareas == {"02": (9, 7, 4), "03": (5, 5, 2), "04": (5, 5, 2), "06": (7, 7, 2), "07": (9, 9, 0)}
+    # 06: sin el TRUNCATE de Descripciones NC (carga acumulativa): 7 -> 6 tareas
+    assert tareas == {"02": (9, 7, 4), "03": (5, 5, 2), "04": (5, 5, 2), "06": (6, 6, 2), "07": (9, 9, 0)}
 
 
 # --------------------------------------------------------------------------- #
@@ -229,7 +239,7 @@ def _flujos_y_paquetes():
     entran por un cruce (Nombre Contacto)."""
     for pq in PAQUETES:
         for t in pq.tareas:
-            if isinstance(t, TareaDataFlow):
+            if isinstance(t, TareaDataFlow) and t.nombre not in pq.agregadas:  # las agregadas no estan en el .dtsx
                 for f in t.flujos:
                     yield pq, t, f
                     if f.cruce:

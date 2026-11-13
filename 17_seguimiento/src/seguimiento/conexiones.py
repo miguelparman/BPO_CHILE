@@ -65,7 +65,7 @@ def tablas_de(paquetes: Sequence[Paquete]) -> list[str]:
     for p in paquetes:
         for tarea in p.tareas:
             if isinstance(tarea, TareaDataFlow):
-                tablas += [f"[{BD_STAGING}].[dbo].[{f.tabla}]" for f in tarea.flujos]
+                tablas += [f"[{f.base}].[dbo].[{f.tabla}]" for f in tarea.flujos]
             elif isinstance(tarea, TareaDescripcionesNC):
                 tablas.append(f"[{BD_STAGING}].[dbo].[{TABLA_DESCRIPCIONES_NC}]")
         tablas += TABLAS_POR_PAQUETE.get(p.codigo, ())

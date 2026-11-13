@@ -54,8 +54,11 @@ def test_el_sql_que_usa_una_temporal_va_en_el_bloque_que_la_carga():
                         assert p.bloque_de(t) is not None and p.bloque_de(t).nombre == carga[tabla], (p.codigo, t.nombre)
 
 
-def test_el_truncate_de_descripciones_nc_se_omite_con_su_carga():
+def test_descripciones_nc_es_acumulativa_no_hay_truncate_ni_delete_de_su_tabla():
     p06 = next(p for p in PAQUETES if p.codigo == "06")
-    truncate = next(t for t in p06.tareas if isinstance(t, TareaSql) and "TBL_DESCRIPCIONES_NC" in t.script)
+    assert not any(isinstance(t, TareaSql) and "TBL_DESCRIPCIONES_NC" in t.script for t in p06.tareas)  # sin TRUNCATE
     nc = next(t for t in p06.tareas if isinstance(t, TareaDescripcionesNC))
-    assert p06.bloque_de(truncate) is p06.bloque_de(nc)
+    assert p06.bloque_de(nc).nombre == "Descripciones NC" and p06.bloque_de(nc).tareas == (nc.nombre,)
+    for archivo in ("60_actualiza_descripciones_nc.sql", "65_carga_descripciones_nc.sql"):
+        script = sql.leer("p06", archivo).upper()
+        assert "TRUNCATE" not in script and "DELETE" not in script and "DROP" not in script

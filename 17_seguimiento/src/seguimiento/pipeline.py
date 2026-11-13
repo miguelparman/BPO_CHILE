@@ -184,7 +184,7 @@ class SeguimientoPipeline:
 
     def preparar(self, flujo: FlujoSpec, fuente: FuenteArchivo) -> list[tuple]:
         """Filas validas para la #temporal del flujo (con el cruce, si tiene)."""
-        esquema = self._loader.esquema(flujo.tabla)
+        esquema = self._loader.esquema(flujo.tabla, flujo.base)
         validar_esquema(flujo, esquema)
         filas = self._leer_transformar(flujo, fuente)
         if flujo.cruce:

@@ -73,8 +73,9 @@ def test_a_temporal_redirige_solo_las_staging_reemplazadas():
     merge = sql.leer("p03", "30_carga_correos.sql")
     assert "[CL_TEMPORALES].[dbo].[TBL_SALESFORCE_REPORTE_CORREOS]X0" in merge  # alias pegado en el .dtsx
     assert "#TBL_SALESFORCE_REPORTE_CORREOS X0" in sql.a_temporal(merge)
-    truncate_nc = sql.leer("p06", "50_truncate_temporal_descripciones_nc.sql")
-    assert sql.a_temporal(truncate_nc) == truncate_nc  # TBL_DESCRIPCIONES_NC sigue permanente (SP_FOLIOS_NC)
+    for archivo in ("60_actualiza_descripciones_nc.sql", "65_carga_descripciones_nc.sql"):
+        nc = sql.leer("p06", archivo)
+        assert sql.a_temporal(nc) == nc  # TBL_DESCRIPCIONES_NC sigue permanente (SP_FOLIOS_NC)
     for tabla in m.TABLAS_TEMPORALES:
         assert tabla != m.TABLA_DESCRIPCIONES_NC
 

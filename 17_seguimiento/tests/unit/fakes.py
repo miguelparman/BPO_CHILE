@@ -33,7 +33,7 @@ class LoaderFalso:
         self.eventos: list[tuple] = []
         self.cargas: dict[str, list[tuple]] = {}
 
-    def esquema(self, tabla):
+    def esquema(self, tabla, base=None):
         return self.esquemas.get(tabla, {})
 
     def iniciar_paquete(self):

@@ -11,10 +11,15 @@ SSIS (9 tareas):
                TRUNCATE TEMPORAL -> Carga Descripciones NC (script Python)
   -> Log Fin
 
-Python (7 tareas, ramas en serie): Log Inicio -> CARGA TEMPORAL COMENTARIOS
-  (#temporal) -> LIMPIA -> CARGA COMENTARIOS CHILE -> TRUNCATE TEMPORAL (NC)
-  -> Carga Descripciones NC -> Log Fin.
+Python (6 tareas, ramas en serie): Log Inicio -> CARGA TEMPORAL COMENTARIOS
+  (#temporal) -> LIMPIA -> CARGA COMENTARIOS CHILE -> Carga Descripciones NC -> Log Fin.
 TBL_DESCRIPCIONES_NC sigue siendo permanente: la lee SP_FOLIOS_NC.
+
+CAMBIO (decision del usuario 2026-11-13): 'Carga Descripciones NC' es ACUMULATIVA (upsert por [Número del caso]),
+ya no una recarga completa. Se elimino 'CARGA DESCRIPCIONES NC\\TRUNCATE TEMPORAL' (SQL en
+docs/no_migrado/p06_TRUNCATE_TEMPORAL_DESCRIPCIONES_NC_reemplazada.sql): la tabla nunca se vacia; los casos nuevos
+se insertan y los existentes con otra descripcion se actualizan (loader.cargar_descripciones_nc, scripts_sql/p06/
+60_ y 65_). Asi el CSV puede traer solo las novedades. SP_FOLIOS_NC sigue corriendo despues de la carga.
 """
 
 from __future__ import annotations
@@ -34,7 +39,6 @@ PAQUETE = Paquete(
         TareaDataFlow(_C + "CARGA TEMPORAL COMENTARIOS", (m.FLUJO_TEMP_COMENTARIOS,)),
         TareaSql(_C + "LIMPIA TEMPORAL ASIGNACIONES", leer("p06", "20_limpia_temporal_comentarios.sql")),
         TareaSql("Package\\CARGA COMENTARIOS CHILE", leer("p06", "30_carga_comentarios_chile.sql")),
-        TareaSql(_NC + "TRUNCATE TEMPORAL", leer("p06", "50_truncate_temporal_descripciones_nc.sql")),
         TareaDescripcionesNC(_NC + "Carga Descripciones NC"),
         TareaSql("Package\\Log Fin", leer("p06", "99_log_fin.sql")),
     ),
@@ -48,11 +52,6 @@ PAQUETE = Paquete(
             (m.ARCHIVO_COMENTARIOS,),
             (_C + "CARGA TEMPORAL COMENTARIOS", _C + "LIMPIA TEMPORAL ASIGNACIONES", "Package\\CARGA COMENTARIOS CHILE"),
         ),
-        # Incluye el TRUNCATE: si el archivo esta viejo no se vacia la tabla (la lee SP_FOLIOS_NC).
-        Bloque(
-            "Descripciones NC",
-            (m.ARCHIVO_DESCRIPCIONES_NC,),
-            (_NC + "TRUNCATE TEMPORAL", _NC + "Carga Descripciones NC"),
-        ),
+        Bloque("Descripciones NC", (m.ARCHIVO_DESCRIPCIONES_NC,), (_NC + "Carga Descripciones NC",)),
     ),
 )

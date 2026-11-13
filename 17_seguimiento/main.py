@@ -5,6 +5,7 @@
     04 CL_Seguimiento_04_Proc_Carga_Historial_Casos.dtsx
     06 CL_Seguimiento_06_Proc_Carga_Historial_Comentarios.dtsx
     07 CL_Seguimiento_07_Proc_Seguimiento.dtsx
+    (el 02 incluye, ademas, la carga acumulativa de la cola de reclamos -> CL_FACTURACION; ver paquetes/p02_casos.py)
     (05 Historial Asignaciones: fuera de alcance)
 
 Se ejecutan en ese orden; un paquete empieza solo si el anterior termino OK

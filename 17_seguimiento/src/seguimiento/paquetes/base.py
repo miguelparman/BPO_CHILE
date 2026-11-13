@@ -71,6 +71,9 @@ class Paquete:
     # Tareas del .dtsx que no se ejecutan por redundantes: {refId: motivo}
     redundantes: tuple[tuple[str, str], ...] = ()
     bloques: tuple[Bloque, ...] = ()
+    # Tareas que NO existen en el .dtsx (se agregaron al paquete): refId de cada una. Las pruebas de equivalencia
+    # contra el .dtsx las excluyen; el resto del paquete se sigue comparando tarea por tarea.
+    agregadas: tuple[str, ...] = ()
 
     def bloque_de(self, tarea) -> Bloque | None:
         return next((b for b in self.bloques if tarea.nombre in b.tareas), None)

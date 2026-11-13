@@ -46,7 +46,7 @@ excepción es `TBL_DESCRIPCIONES_NC`, que la usa `SP_FOLIOS_NC`.
 | 02 | Carga de Nombre Contacto en `TBL_SALESFORCE_DATOS_CONTACTO` + UPDATE "Agrega Nombre de Contacto" | El cruce se hace en Python antes de cargar Casos (`transformacion/cruce.py`): LEFT JOIN, `''`→NULL, igualdad sin distinguir mayúsculas ni contar espacios finales, como SQL Server. |
 | 03 | TRUNCA TEMPORAL CORREOS (×2) | #temporal |
 | 04 | TRUNCA TEMPORAL HISTORIAL, TRUNCA TEMPORA HISTORICO | #temporal |
-| 06 | TRUNCATE TEMPORAL COMENTARIOS, TRUNCA TEMPORAL HISTORICO | #temporal. La carga de Descripciones NC no cambia: su tabla sigue permanente porque la lee SP_FOLIOS_NC. |
+| 06 | TRUNCATE TEMPORAL COMENTARIOS, TRUNCA TEMPORAL HISTORICO | #temporal. La tabla de Descripciones NC sigue permanente porque la lee SP_FOLIOS_NC. Su `TRUNCATE TEMPORAL` ya no se ejecuta: desde 2026-11-13 la carga es **acumulativa** (ver la seccion de cambios posteriores). |
 
 Lo que **se mantiene igual**:
 - El T-SQL de negocio, byte a byte: LIMPIA, MERGE, INSERT…SELECT, FECHA BASE y SP. La única diferencia al ejecutarlo
@@ -215,7 +215,7 @@ archivo (`paquetes/base.Bloque`):
 | 03 | Correos | Correos |
 | 04 | Historial | Historial |
 | 06 | Comentarios | Comentarios |
-| 06 | Descripciones NC (**incluye el TRUNCATE**, para no vaciar la tabla; y SP_FOLIOS_NC) | Descripciones NC |
+| 06 | Descripciones NC (carga acumulativa, sin TRUNCATE; y SP_FOLIOS_NC) | Descripciones NC |
 | 07 | — (los SP corren siempre) | — |
 
 Si se omiten todos los bloques de un paquete, el paquete completo no corre y no escribe sus Log Inicio/Fin en
@@ -358,3 +358,15 @@ el cambio en el script del proyecto (y al revés).
 cambia ningún resultado. `15_Logueo` duplicaba tramos internamente (sin llegar a la salida) y se corrigió igual;
 `14_EPA_WSP` no tiene ese DNI en sus tablas de salida; `19_places` y `SP_INSUMOS_SEGUIMIENTO` ya deduplican;
 `SP_PROCESO_SEGUIMIENTO` solo se afectaría con un duplicado en el periodo actual y un DNI de la cartera.
+
+## Cambios posteriores a la equivalencia (decision del usuario, 2026-11-13)
+
+* **Descripciones NC acumulativa (paquete 06).** Ya no se hace `TRUNCATE` + carga completa: se elimino la tarea
+  `CARGA DESCRIPCIONES NC\TRUNCATE TEMPORAL` (su SQL esta en `docs/no_migrado/p06_TRUNCATE_TEMPORAL_DESCRIPCIONES_NC_reemplazada.sql`)
+  y `Carga Descripciones NC` hace un upsert por `[Número del caso]` (`loader.cargar_descripciones_nc`, scripts
+  `scripts_sql/p06/60_` y `65_`): los casos nuevos se insertan y los que ya estan con otra descripcion se actualizan, en
+  una transaccion; un caso que no viene en el CSV no se toca. `SP_FOLIOS_NC` sigue corriendo despues. Asi el CSV puede
+  traer solo novedades. Las pruebas la registran en `NO_MIGRADAS` (06: 7 -> 6 tareas).
+* **Cola de reclamos dentro del 02** (carga acumulativa en `CL_FACTURACION`): tareas agregadas, no existen en el .dtsx
+  (`Paquete.agregadas`).
+

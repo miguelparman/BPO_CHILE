@@ -26,15 +26,15 @@ from mappings import (
 class SeguimientoLoader:
     def __init__(self, db: DatabaseGateway) -> None:
         self._db = db
-        self._esquemas: dict[str, dict[str, tuple[str, int | None]]] = {}
+        self._esquemas: dict[tuple[str, str], dict[str, tuple[str, int | None]]] = {}
         self._sesion: int | None = None
         self._dateformat = "mdy"
 
-    def esquema(self, tabla: str) -> dict[str, tuple[str, int | None]]:
-        """Columnas reales de [CL_TEMPORALES].[dbo].[tabla] (cacheado por corrida)."""
-        if tabla not in self._esquemas:
-            self._esquemas[tabla] = self._db.columnas_de_tabla(BD_STAGING, tabla)
-        return self._esquemas[tabla]
+    def esquema(self, tabla: str, base: str = BD_STAGING) -> dict[str, tuple[str, int | None]]:
+        """Columnas reales de [base].[dbo].[tabla] (por defecto la staging de CL_TEMPORALES; cacheado por corrida)."""
+        if (base, tabla) not in self._esquemas:
+            self._esquemas[(base, tabla)] = self._db.columnas_de_tabla(base, tabla)
+        return self._esquemas[(base, tabla)]
 
     # ------------------------------------------------------------------ #
     # Sesion del paquete
@@ -77,21 +77,31 @@ class SeguimientoLoader:
     def cargar_temporal(self, flujo: FlujoSpec, filas: Sequence[tuple]) -> int:
         """OLE DB Destination -> #temporal con la estructura de la staging."""
         self._restablecer()
-        self._db.execute_autocommit(sql.crear_temporal(flujo.tabla, flujo.tipos_temporal))
+        self._db.execute_autocommit(sql.crear_temporal(flujo.tabla, flujo.tipos_temporal, flujo.base))
         insertadas = self._db.insertar_todo_o_nada(
-            sql.insert_temporal(flujo), filas, tamanos_parametros(flujo.columnas_insert, self.esquema(flujo.tabla))
+            sql.insert_temporal(flujo),
+            filas,
+            tamanos_parametros(flujo.columnas_insert, self.esquema(flujo.tabla, flujo.base)),
         )
         self._verificar_sesion()
         return insertadas
 
     def cargar_descripciones_nc(self, filas: Sequence[tuple]) -> int:
-        """df.to_sql('TBL_DESCRIPCIONES_NC', if_exists='append')."""
+        """Carga ACUMULATIVA (upsert por [Número del caso]) de TBL_DESCRIPCIONES_NC: las filas del CSV van a una
+        #temporal (molde: la propia tabla) y, en UNA transaccion, se actualizan los casos cuya descripcion cambio y se
+        insertan los nuevos. No se trunca ni se borra nada (antes: TRUNCATE + to_sql append). Devuelve nuevos +
+        modificados."""
         self._restablecer()
-        return self._db.insertar_todo_o_nada(
-            sql.insert_tabla(TABLA_DESCRIPCIONES_NC, COLUMNAS_DESCRIPCIONES_NC),
+        self._db.execute_autocommit(sql.crear_temporal(TABLA_DESCRIPCIONES_NC))
+        self._db.insertar_todo_o_nada(
+            sql.insert_en_temporal(TABLA_DESCRIPCIONES_NC, COLUMNAS_DESCRIPCIONES_NC),
             filas,
             tamanos_parametros(COLUMNAS_DESCRIPCIONES_NC, self.esquema(TABLA_DESCRIPCIONES_NC)),
         )
+        afectadas = self.ejecutar_transaccion(
+            [sql.leer("p06", "60_actualiza_descripciones_nc.sql"), sql.leer("p06", "65_carga_descripciones_nc.sql")]
+        )
+        return sum(max(n, 0) for n in afectadas)
 
     def ejecutar_sp_folios_nc(self) -> None:
         self.ejecutar_sql(SP_FOLIOS_NC)

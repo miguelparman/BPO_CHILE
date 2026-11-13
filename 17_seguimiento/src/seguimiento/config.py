@@ -122,6 +122,8 @@ def cargar_configuracion(base_dir: Path) -> Settings:
                 or mappings.CARPETAS_DEFAULT[mappings.CARPETA_SEGUIMIENTO],
                 mappings.CARPETA_AUXILIARES: os.getenv("SHAREPOINT_FOLDER_AUXILIARES")
                 or mappings.CARPETAS_DEFAULT[mappings.CARPETA_AUXILIARES],
+                mappings.CARPETA_RECLAMOS: os.getenv("SHAREPOINT_FOLDER_RECLAMOS")
+                or mappings.CARPETAS_DEFAULT[mappings.CARPETA_RECLAMOS],
             },
             timeout_ms=_env_int("GRAPH_TIMEOUT", 120000),
         ),

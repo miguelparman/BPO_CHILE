@@ -22,11 +22,14 @@ def _archivos_validos() -> dict[str, bytes]:
         m.ARCHIVO_HISTORIAL.nombre: csv_crudo(["a"] * 6, [["19412328", "M", "23-10-2026 14:31", "Estado", "Nuevo", "Asignado"]]),
         m.ARCHIVO_COMENTARIOS.nombre: csv_crudo(["a"] * 5, [["19412328", "M", "23-10-2026 14:31", "1", "Hola\nchao"]]),
         m.ARCHIVO_DESCRIPCIONES_NC.nombre: csv_crudo(["a", "b"], [["12250117", "FOLIO NC 1"]]),
+        m.ARCHIVO_COLA_RECLAMO.nombre: csv_crudo(["a"] * 4, [["19412328", "Propietario", "p@x.cl", ""]]),
     }
 
 
 def _loader(**kw) -> LoaderFalso:
-    return LoaderFalso({f.tabla: esquema_de(f) for f in m.TODOS_LOS_FLUJOS}, **kw)
+    esquemas = {f.tabla: esquema_de(f) for f in m.TODOS_LOS_FLUJOS}
+    esquemas[m.FLUJO_COLA_RECLAMO.tabla] = esquema_de(m.FLUJO_COLA_RECLAMO)  # cola de reclamos (agregada al 02)
+    return LoaderFalso(esquemas, **kw)
 
 
 def test_corrida_completa_en_orden_02_03_04_06_07():
@@ -48,7 +51,7 @@ def test_no_se_ejecutan_las_tareas_redundantes():
     scripts = loader.scripts()
     assert not any(s.lstrip().upper().startswith("TRUNCATE TABLE [CL_TEMPORALES].[DBO].[TBL_SALESFORCE") for s in scripts)
     assert not any("TBL_SALESFORCE_DATOS_CONTACTO" in s or "TIPIFICACIONES" in s for s in scripts)
-    assert {e[1] for e in loader.eventos if e[0] == "temporal"} == set(m.TABLAS_TEMPORALES)
+    assert {e[1] for e in loader.eventos if e[0] == "temporal"} == set(m.TABLAS_TEMPORALES) | {m.FLUJO_COLA_RECLAMO.tabla}
 
 
 def test_casos_cargados_con_contacto_cruzado_y_saltos_crlf():
@@ -67,6 +70,7 @@ def test_borrado_e_insercion_de_casos_en_una_transaccion():
     assert [[x.nombre.rsplit("\\", 1)[-1] for x in t.tareas] for t in transacciones] == [
         ["LIMPIA BASE CHILE", "CARGA CASOS CHILE"],
         ["LIMPIA CASOS B CHILE", "CARGA CASOS B CHILE"],
+        ["ACTUALIZA COLA RECLAMO", "CARGA COLA RECLAMO"],  # agregada al 02: upsert de la cola de reclamos
     ]
 
 
@@ -162,11 +166,11 @@ def test_nombre_contacto_viejo_omite_casos_porque_lo_cruza():
     assert any("CARGA TEMPORAL CASOS" in r.tarea and "Reporte_Nombre_Contacto" in r.detalle for r in resultado.advertencias)
 
 
-def test_descripciones_nc_viejo_no_ejecuta_el_truncate():
+def test_descripciones_nc_viejo_no_toca_su_tabla():
     p06 = [p for p in PAQUETES if p.codigo == "06"]
     loader, resultado = _correr_omitiendo({m.ARCHIVO_DESCRIPCIONES_NC: "datos viejos"}, p06)
     scripts = loader.scripts()
-    assert not any("TBL_DESCRIPCIONES_NC" in s for s in scripts)  # no se vacia la tabla
+    assert not any("TBL_DESCRIPCIONES_NC" in s for s in scripts)  # no se escribe nada en la tabla
     assert ("sp_folios_nc",) not in loader.eventos and not any(e[0] == "nc" for e in loader.eventos)
     assert any("TBL_HISTORIAL_COMENTARIOS" in s for s in scripts)  # Comentarios si se carga
     assert resultado.tareas[-1].tarea == "Package\Log Fin" and resultado.tareas[-1].estado == OK
