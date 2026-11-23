@@ -76,6 +76,16 @@ class FakeDatabaseGateway:
         self.eventos.append((self.nombre, f"SELECT {table}"))
         return self.tables[table]
 
+    # Solo los usa el previsto: 'existente_previsto' (Servicio, Fecha, Tramo, Prev_Voz) y 'futuras_previsto'.
+    def run_query(self, sql_text: str, params: Sequence[Any] | None = None) -> pd.DataFrame:
+        self.eventos.append((self.nombre, "SELECT previsto existente"))
+        vacio = pd.DataFrame(columns=["Servicio", "Fecha", "Tramo", "Prev_Voz"])
+        return getattr(self, "existente_previsto", vacio)
+
+    def fetch_scalar(self, sql_text: str, params: Sequence[Any] | None = None) -> Any:
+        self.eventos.append((self.nombre, "COUNT previsto futuras"))
+        return getattr(self, "futuras_previsto", 0)
+
     def columnas_de_tabla(self, table: str, schema: str = "dbo") -> dict:
         return self.esquemas.get(table) or esquema_ok(table)
 

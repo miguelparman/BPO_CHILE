@@ -16,6 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+import previsto
 from exceptions import TraficoError
 
 ALERTA_TXT_PATH_DEFAULT = (
@@ -67,6 +68,8 @@ class AlertaSettings:
 class Settings:
     db_temporales: DbSettings  # Connection Manager 'PEOPEDESK0328.CL_TEMPORALES'
     db_trafico: DbSettings  # Connection Manager 'PEOPEDESK0328.CL_TRAFICO'
+    db_data: DbSettings  # CL_DATA: destino del previsto (TBL_PREVISTO_CL)
+    previsto_folder_path: str  # carpeta SharePoint de PVTA_PROYECCION_PPP_FRACTALIA_PERU.csv
     sharepoint: SharePointSettings  # reemplaza a [Externos_Frac]
     alerta: AlertaSettings
     periodo: int | None = None  # PERIODO: fija User::Periodo (None = calculo automatico)
@@ -124,6 +127,8 @@ def cargar_configuracion(base_dir: Path) -> Settings:
     return Settings(
         db_temporales=_db("DB_NAME_TEMPORALES", "CL_TEMPORALES"),
         db_trafico=_db("DB_NAME_TRAFICO", "CL_TRAFICO"),
+        db_data=_db("DB_NAME_DATA", "CL_DATA"),
+        previsto_folder_path=os.getenv("SHAREPOINT_FOLDER_PATH_PREVISTO") or previsto.CARPETA_DEFAULT,
         sharepoint=SharePointSettings(
             tenant_id=_require_env("TENANT_ID"),
             client_id=_require_env("CLIENT_ID"),

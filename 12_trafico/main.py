@@ -26,6 +26,8 @@ Uso:
     python main.py                    # periodo: PERIODO de .env, o automatico (mes anterior si hoy es dia <= DIA_CIERRE_MES)
     python main.py --periodo 202609   # fuerza el periodo (YYYYMM); tiene prioridad sobre .env
     python main.py --solo-validar     # descarga y valida los CSV + esquema, sin escribir nada
+    python main.py --solo-previsto --solo-faltantes   # relleno unico: solo inserta lo que falta hasta hoy
+    python main.py --solo-previsto [--solo-validar]   # solo TBL_PREVISTO_CL (CL_DATA); con --solo-validar, ensayo sin escribir
 """
 
 from __future__ import annotations
@@ -64,6 +66,18 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--solo-validar", action="store_true", help="Solo extrae y valida (CSV + esquema); no escribe en la base."
     )
+    parser.add_argument(
+        "--solo-previsto",
+        action="store_true",
+        help="Corre unicamente el previsto (TBL_PREVISTO_CL en CL_DATA): no toca trafico, temporales ni LOGS_PROCESOS. "
+        "Combinable con --solo-validar (ensayo sin escribir).",
+    )
+    parser.add_argument(
+        "--solo-faltantes",
+        action="store_true",
+        help="Con --solo-previsto: relleno unico. Inserta solo las llaves que faltan con Fecha <= hoy; no toca lo "
+        "existente ni nada con Fecha > hoy.",
+    )
     return parser.parse_args()
 
 
@@ -85,6 +99,7 @@ def main() -> int:
 
     db_temporales = DatabaseGateway(lambda: crear_conexion(settings.db_temporales), settings.batch_size, "CL_TEMPORALES")
     db_trafico = DatabaseGateway(lambda: crear_conexion(settings.db_trafico), settings.batch_size, "CL_TRAFICO")
+    db_data = DatabaseGateway(lambda: crear_conexion(settings.db_data), settings.batch_size, "CL_DATA")
     try:
         sp = settings.sharepoint
         token = get_graph_token(sp.tenant_id, sp.client_id, sp.client_secret, sp.timeout_ms)
@@ -97,7 +112,13 @@ def main() -> int:
             csv_reader=CsvReader(client, drive_id, sp.folder_path),
             alerta_txt_path=settings.alerta.txt_path,
             alerta_segundos_espera=settings.alerta.segundos_espera,
+            db_data=db_data,
+            previsto_reader=CsvReader(client, drive_id, settings.previsto_folder_path),
         )
+        if args.solo_previsto:
+            resultado = pipeline.run_previsto(solo_validar=args.solo_validar, solo_faltantes=args.solo_faltantes)
+            logger.info("[Trafico] Previsto: %s", resultado)
+            return 0 if resultado and resultado.get("ok") else 1
         pipeline.run(periodo, solo_validar=args.solo_validar)
         return 0
 
@@ -115,6 +136,7 @@ def main() -> int:
         logger.exception("Error inesperado:")
         return 1
     finally:
+        db_data.cerrar()
         db_trafico.cerrar()
         db_temporales.cerrar()
 

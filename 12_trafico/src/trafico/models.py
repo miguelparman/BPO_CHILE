@@ -54,8 +54,10 @@ class ResultadoPipeline:
     filas_temporales: dict[str, int] = field(default_factory=dict)
     filas_cl_trafico: dict[str, int] = field(default_factory=dict)
     alerta_ok: bool | None = None
+    previsto: dict | None = None  # None = no corrio; {'ok': bool, ...} resumen o error
 
     def __str__(self) -> str:
         temp = ", ".join(f"{k}={v}" for k, v in self.filas_temporales.items())
         dest = ", ".join(f"{k}={v}" for k, v in self.filas_cl_trafico.items())
-        return f"periodo={self.periodo} | temporales: {temp} | CL_TRAFICO: {dest}"
+        extra = f" | previsto: {self.previsto}" if self.previsto is not None else ""
+        return f"periodo={self.periodo} | temporales: {temp} | CL_TRAFICO: {dest}{extra}"

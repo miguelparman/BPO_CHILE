@@ -16,6 +16,7 @@ import logging
 import pandas as pd
 
 import mappings
+import previsto
 import sql
 
 logger = logging.getLogger("trafico")
@@ -55,3 +56,33 @@ def cargar_cl_trafico(db_trafico, periodo: int, transformados: dict[str, pd.Data
         for destino in mappings.DESTINOS:
             filas[destino.tabla] = db_trafico.bulk_insert(destino.tabla, transformados[destino.tabla], mappings.SCHEMA)
     return filas
+
+
+def leer_previsto_existente(db_data, desde, hoy) -> tuple[pd.DataFrame, int]:
+    """Lee de TBL_PREVISTO_CL (solo lectura) las filas con Fecha entre 'desde' y 'hoy' (para saber que
+    llaves ya existen) y cuenta cuantas filas futuras (Fecha > hoy) hay hoy en la tabla."""
+    existente = db_data.run_query(
+        f"SELECT Servicio, Fecha, Tramo, Prev_Voz FROM [{previsto.ESQUEMA}].[{previsto.TABLA}] "
+        "WHERE Fecha >= ? AND Fecha <= ?",
+        (desde, hoy),
+    )
+    futuras = db_data.fetch_scalar(
+        f"SELECT COUNT(*) FROM [{previsto.ESQUEMA}].[{previsto.TABLA}] WHERE Fecha > ?", (hoy,)
+    )
+    return existente, int(futuras or 0)
+
+
+def cargar_previsto(db_data, plan: previsto.PlanPrevisto) -> dict[str, int]:
+    """[CL_DATA].[dbo].[TBL_PREVISTO_CL], en UNA transaccion (todo o nada): borra las fechas FUTURAS
+    (> hoy) solo si el archivo trae fechas futuras con que reemplazarlas, inserta las llaves faltantes
+    del pasado/hoy y las fechas futuras del archivo. Nunca actualiza ni borra filas con Fecha <= hoy."""
+    resultado = {"borradas": 0, "insertadas_pasado": 0, "insertadas_futuro": 0}
+    with db_data.transaccion():
+        if len(plan.reemplazar_futuro):
+            db_data.execute_script(
+                f"DELETE FROM [{previsto.ESQUEMA}].[{previsto.TABLA}] WHERE Fecha > ?", (plan.hoy,)
+            )
+            resultado["borradas"] = plan.futuro_en_tabla
+        resultado["insertadas_pasado"] = db_data.bulk_insert(previsto.TABLA, plan.insertar_pasado, previsto.ESQUEMA)
+        resultado["insertadas_futuro"] = db_data.bulk_insert(previsto.TABLA, plan.reemplazar_futuro, previsto.ESQUEMA)
+    return resultado
