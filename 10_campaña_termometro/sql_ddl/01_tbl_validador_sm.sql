@@ -1,0 +1,12 @@
+-- DDL de la tabla de la hoja VALIDADOR_SM (se crea una sola vez; el ETL hace TRUNCATE + carga).
+USE [CL_CAMPAÑAS];
+IF OBJECT_ID('dbo.TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM', 'U') IS NULL
+CREATE TABLE dbo.TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM (
+    PERIODO         NVARCHAR(10)  NULL,
+    PLACE           NVARCHAR(50)  NULL,
+    RUT_SM          NVARCHAR(20)  NULL,
+    DNI             NVARCHAR(50)  NULL,
+    NOM_SM          NVARCHAR(200) NULL,
+    MAIL_SM         NVARCHAR(200) NULL,
+    MAIL_FRACTALIA  NVARCHAR(200) NULL
+);

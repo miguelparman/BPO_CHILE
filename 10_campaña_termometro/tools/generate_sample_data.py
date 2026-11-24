@@ -65,11 +65,18 @@ def build_excel() -> None:
         {"PERIODO": str(PERIODO), "RUT_SIN_DV": rut_sin_dv("55555555-5")}
     ])
 
+    # Hoja VALIDADOR_SM (agregada): corrige NOM_SM y cod_dni por PERIODO + PLACE
+    df_validador = pd.DataFrame([
+        {"PERIODO": str(PERIODO), "PLACE": "51030001", "RUT_SM": "50000001-1", "DNI": "07123456",
+         "NOM_SM": "Supervisor Validado Uno", "MAIL_SM": "SM1@movistar.cl", "MAIL_FRACTALIA": "uno@fractaliasystems.es"},
+    ])
+
     out_path = os.path.join(OUT_DIR, "ACTUAL_test.xlsx")
     with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
         pd.DataFrame({"nota": ["Hoja de control, no se usa en el pipeline"]}).to_excel(writer, sheet_name="Hoja1", index=False)
         df_db.to_excel(writer, sheet_name="DB", index=False)
         df_detractor.to_excel(writer, sheet_name="DB_DETRACTOR", index=False)
+        df_validador.to_excel(writer, sheet_name="VALIDADOR_SM", index=False)
     print(f"OK: {out_path}")
 
 

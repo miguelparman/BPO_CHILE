@@ -5,9 +5,10 @@ Orquestación del pipeline. Reemplaza el Control Flow del .dtsx:
   Contenedor de secuencias       |-> convergen en -> Contenedor "162" (paso final)
   (detractores)                  |
   SALESFORCE 1 (encuestas)      /
+  VALIDADOR_SM (agregado)       /   (hoja de ACTUAL_.xlsx; corrige NOM_SM y cod_dni al final)
 
-Las tres primeras ramas corren en paralelo (igual que en SSIS, donde no
-dependen entre sí), y el paso final solo arranca cuando las tres terminan
+Las cuatro primeras ramas corren en paralelo (igual que en SSIS, donde no
+dependen entre sí), y el paso final solo arranca cuando las cuatro terminan
 exitosamente -- igual que las Precedence Constraints originales.
 
 Antes de las ramas se descargan los dos archivos crudos (SharePoint vía
@@ -18,7 +19,9 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import sql
-from db import run_sql_file
+from sqlalchemy import text
+
+from db import get_connection, run_sql_file
 from carga.loader import truncate_table, load_dataframe
 from extraccion.excel_extractor import read_excel_sheet
 from extraccion.csv_extractor import read_salesforce_csv
@@ -26,9 +29,22 @@ from extraccion.fuentes import Fuente
 from transformacion.clientes import transform_clientes
 from transformacion.detractores import transform_detractores
 from transformacion.encuestas import transform_encuestas
+from transformacion.validador_sm import transform_validador_sm
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+
+_SQL_RESUMEN_VALIDADOR = """
+SELECT
+    (SELECT COUNT(*) FROM [CL_CAMPAÑAS].[dbo].[TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM]
+      WHERE TRY_CAST(PERIODO AS INT) = :periodo) AS validador,
+    (SELECT COUNT(*) FROM [CL_CAMPAÑAS].[dbo].[TBL_CAMPAÑA_TERMOMETRO] T
+      WHERE CAST(T.PERIODO AS INT) = :periodo
+        AND EXISTS (SELECT 1 FROM [CL_CAMPAÑAS].[dbo].[TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM] V
+                    WHERE TRY_CAST(V.PERIODO AS INT) = CAST(T.PERIODO AS INT)
+                      AND TRY_CAST(V.PLACE AS FLOAT) = T.ID_GENESYS_SM_TITULAR)) AS cruzan
+"""
 
 
 def descargar(nombre: str, fuente: Fuente) -> bytes:
@@ -58,6 +74,19 @@ def rama_detractores(excel: bytes, origen: str) -> None:
     logger.info("[detractores] fin (%d filas)", len(df))
 
 
+def rama_validador_sm(excel: bytes, origen: str) -> None:
+    """(Agregado) TRUNCATE + carga de la hoja VALIDADOR_SM de ACTUAL_.xlsx.
+
+    Se lee todo como texto (dtype=str) para no perder ceros iniciales del DNI.
+    """
+    logger.info("[validador_sm] inicio")
+    truncate_table("TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM")
+    df = read_excel_sheet(excel, settings.excel_validador_sm_sheet, origen, dtype=str)
+    df = transform_validador_sm(df)
+    load_dataframe(df, "TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM")
+    logger.info("[validador_sm] fin (%d filas)", len(df))
+
+
 def rama_salesforce(csv: bytes, origen: str, periodo: int, fecha_inicio: str, fecha_fin: str) -> None:
     """Reemplaza 'SALESFORCE 1': DELETE PERIODO -> carga CSV -> limpieza -> ESTADO -> PESO."""
     logger.info("[salesforce] inicio")
@@ -85,6 +114,12 @@ def paso_final(periodo: int, fecha_evaluacion: str, fecha_fin_evaluacion: str) -
             "fecha_fin_evaluacion": fecha_fin_evaluacion,
         },
     )
+    # (Agregado) corrige NOM_SM y cod_dni con la hoja VALIDADOR_SM, solo del periodo procesado.
+    with get_connection() as conn:
+        res = conn.execute(text(_SQL_RESUMEN_VALIDADOR), {"periodo": periodo}).one()
+    logger.info("[final] VALIDADOR_SM: %d filas del validador para el periodo, %d cruzan con la tabla final",
+                res.validador, res.cruzan)
+    run_sql_file(sql.UPDATE_VALIDADOR_SM, {"periodo": periodo})
     logger.info("[final] fin")
 
 
@@ -96,10 +131,11 @@ def run(periodo: int, fecha_inicio: str, fecha_fin: str, fuente_excel: Fuente, f
         "clientes": lambda: rama_clientes(excel, fuente_excel.descripcion, periodo),
         "detractores": lambda: rama_detractores(excel, fuente_excel.descripcion),
         "salesforce": lambda: rama_salesforce(csv, fuente_csv.descripcion, periodo, fecha_inicio, fecha_fin),
+        "validador_sm": lambda: rama_validador_sm(excel, fuente_excel.descripcion),
     }
 
-    logger.info("Ejecutando las 3 ramas en paralelo: %s", list(ramas))
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    logger.info("Ejecutando las 4 ramas en paralelo: %s", list(ramas))
+    with ThreadPoolExecutor(max_workers=4) as executor:
         futures = {executor.submit(fn): name for name, fn in ramas.items()}
         errores = []
         for future in as_completed(futures):

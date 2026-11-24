@@ -36,6 +36,7 @@ Layout `src/` (mismo patrón que 12_trafico … 15_Logueo). `main.py` agrega
 │   ├── transformacion/          # reemplazan Derived Column / Data Convert
 │   │   ├── clientes.py
 │   │   ├── detractores.py
+│   │   ├── validador_sm.py      # (agregado) hoja VALIDADOR_SM
 │   │   └── encuestas.py
 │   ├── carga/                   # reemplaza OLE DB Destination
 │   │   └── loader.py
@@ -46,6 +47,7 @@ Layout `src/` (mismo patrón que 12_trafico … 15_Logueo). `main.py` agrega
 │       ├── 40_update_peso.sql
 │       ├── 50_delete_periodo_evaluacion.sql
 │       ├── 60_insert_final.sql
+│       ├── 70_update_validador_sm.sql   # (agregado) corrige NOM_SM y cod_dni
 │       └── 90_select_periodo_final.sql   # solo para tools/parity
 ├── tests/unit/                  # pytest de los transformadores
 ├── tools/                       # utilidades fuera del flujo productivo
@@ -66,7 +68,7 @@ desde la biblioteca **Data Reporting**, carpeta
 
 | Archivo | Uso | Quién lo deja ahí |
 |---|---|---|
-| `SOURCE/ACTUAL_.xlsx` | hojas `DB` (clientes) y `DB_DETRACTOR` | carga manual |
+| `SOURCE/ACTUAL_.xlsx` | hojas `DB` (clientes), `DB_DETRACTOR` y `VALIDADOR_SM` | carga manual |
 | `SF/Reporte_termometros.csv` | encuestas Salesforce | `201_bot_salesforce` (informe `00O5I0000028vG9UAI`) |
 
 Ya no se lee la carpeta local sincronizada `BPO - Insumos\Chile\Campanhas\Termometro`.
@@ -220,3 +222,16 @@ haya quedado como se espera, comparando contra el resultado real en
 - Si cualquiera de las tres ramas (clientes, detractores, salesforce) falla, el paso final **no se ejecuta** — esto replica el comportamiento de las Precedence Constraints del `.dtsx` original (las tres alimentan al contenedor final, así que si una falla, SSIS tampoco continuaría).
 - Los logs se escriben a consola y a `logs/termometro_<timestamp>.log` (carpeta `logs/` en la raíz del proyecto, sin importar desde dónde se ejecute).
 - Pendiente de definir (no estaba explícito en el `.dtsx`): ¿qué pasa si falla una fila específica dentro de la carga? El original no muestra redirección de filas erróneas configurada, así que el comportamiento por defecto (fallar todo el batch) se mantuvo igual en Python.
+
+
+## Proceso agregado: VALIDADOR_SM (no existe en el .dtsx)
+
+Hoja `VALIDADOR_SM` de `ACTUAL_.xlsx` (columnas `PERIODO, PLACE, RUT_SM, DNI, NOM_SM, MAIL_SM, MAIL_FRACTALIA`).
+
+- Rama `validador_sm` (en paralelo con las otras): TRUNCATE + carga en `CL_CAMPAÑAS.dbo.TBL_CAMPAÑA_TERMOMETRO_VALIDADOR_SM`.
+  La tabla se crea una vez con `sql_ddl/01_tbl_validador_sm.sql` (ya creada en el 162).
+- En el paso final, tras el INSERT, `70_update_validador_sm.sql` cruza por `PERIODO` y `ID_GENESYS_SM_TITULAR = PLACE`
+  y reemplaza `NOM_SM` y `cod_dni` (= `DNI`) **solo del periodo procesado**. Si el validador trae el dato vacío se conserva el actual.
+- Todo se lee como texto. Duplicados de PERIODO+PLACE: aviso en el log y se usa una sola fila (la última).
+  DNI con menos de 8 dígitos: aviso en el log (posible cero inicial perdido; la columna del Excel debe ser Texto).
+- El log del paso final informa cuántas filas del validador cruzan con la tabla final.

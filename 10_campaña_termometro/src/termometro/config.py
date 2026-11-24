@@ -69,6 +69,7 @@ class Settings:
 
     excel_clientes_sheet: str = os.getenv("EXCEL_CLIENTES_SHEET", "DB")
     excel_detractores_sheet: str = os.getenv("EXCEL_DETRACTORES_SHEET", "DB_DETRACTOR")
+    excel_validador_sm_sheet: str = os.getenv("EXCEL_VALIDADOR_SM_SHEET", "VALIDADOR_SM")
 
     csv_salesforce_encoding: str = os.getenv("CSV_SALESFORCE_ENCODING", "latin-1")
     csv_salesforce_delimiter: str = os.getenv("CSV_SALESFORCE_DELIMITER", ",")

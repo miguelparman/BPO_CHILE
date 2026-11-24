@@ -16,6 +16,7 @@ UPDATE_ESTADO = SQL_DIR / "30_update_estado.sql"  # SALESFORCE 1\UPDATE ESTADO
 UPDATE_PESO = SQL_DIR / "40_update_peso.sql"  # SALESFORCE 1\UPDATE PESO
 DELETE_PERIODO_EVALUACION = SQL_DIR / "50_delete_periodo_evaluacion.sql"  # 162\DELETE PERIODO EN EVALUACION
 INSERT_FINAL = SQL_DIR / "60_insert_final.sql"  # 162\TBL_CAMPAÑA_TERMOMETRO
+UPDATE_VALIDADOR_SM = SQL_DIR / "70_update_validador_sm.sql"  # (agregado) corrige NOM_SM y cod_dni con la hoja VALIDADOR_SM
 
 # No es parte del .dtsx: lo usa tools/parity/snapshot.py
 SELECT_PERIODO_FINAL = SQL_DIR / "90_select_periodo_final.sql"

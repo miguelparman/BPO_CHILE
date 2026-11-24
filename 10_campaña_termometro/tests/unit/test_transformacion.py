@@ -3,6 +3,7 @@ import pytest
 
 from transformacion.clientes import OUTPUT_COLUMNS as COLS_CLIENTES, transform_clientes
 from transformacion.detractores import transform_detractores
+from transformacion.validador_sm import OUTPUT_COLUMNS as COLS_VALIDADOR, transform_validador_sm
 from transformacion.encuestas import OUTPUT_COLUMNS as COLS_ENCUESTAS, transform_encuestas
 
 
@@ -81,3 +82,43 @@ def test_encuestas_coma_decimal_y_enteros():
     assert fila["Promedio del termómetro"] == pytest.approx(6.77)
     assert fila["11. Satisfacción general"] == 7
     assert pd.isna(fila["14. Probabilidad de recomendación"])  # "No evaluado" -> NULL
+
+
+def _validador(*filas):
+    return pd.DataFrame(
+        [
+            {"PERIODO": p, "PLACE": pl, "RUT_SM": "1-9", "DNI": dni, "NOM_SM": nom, "MAIL_SM": "a@b.cl", "MAIL_FRACTALIA": "a@f.es"}
+            for p, pl, dni, nom in filas
+        ]
+    )
+
+
+def test_validador_sm_columnas_y_texto():
+    df = transform_validador_sm(_validador(("202611", "51030154", " 07123456 ", " Ana ")))
+    assert list(df.columns) == COLS_VALIDADOR
+    assert df.iloc[0]["DNI"] == "07123456"  # no pierde el cero inicial
+    assert df.iloc[0]["NOM_SM"] == "Ana"
+
+
+def test_validador_sm_falta_columna():
+    with pytest.raises(ValueError):
+        transform_validador_sm(_validador(("202611", "1", "12345678", "x")).drop(columns=["DNI"]))
+
+
+def test_validador_sm_descarta_sin_llave():
+    df = transform_validador_sm(_validador(("202611", "1", "12345678", "a"), ("202611", None, "12345678", "b"), (None, "2", "12345678", "c")))
+    assert df["PLACE"].tolist() == ["1"]
+
+
+def test_validador_sm_duplicados_avisa_y_conserva_la_ultima(caplog):
+    with caplog.at_level("WARNING"):
+        df = transform_validador_sm(_validador(("202611", "1", "11111111", "vieja"), ("202611", "1", "22222222", "nueva")))
+    assert len(df) == 1 and df.iloc[0]["NOM_SM"] == "nueva"
+    assert "duplicadas" in caplog.text
+
+
+def test_validador_sm_avisa_dni_corto(caplog):
+    with caplog.at_level("WARNING"):
+        df = transform_validador_sm(_validador(("202611", "1", "7123456", "a")))
+    assert df.iloc[0]["DNI"] == "7123456"  # no se corrige
+    assert "menos de 8" in caplog.text
